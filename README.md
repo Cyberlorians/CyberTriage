@@ -206,6 +206,29 @@ If the customer will not let the deployer use `Owner`, deploy the resources firs
   -SasBrokerFunctionAppName '<sas-broker-function-app-name-from-deployment>'
 ```
 
+That script sets these Azure RBAC permissions:
+
+```text
+SAS broker Function App managed identity:
+  Storage Blob Delegator on the evidence storage account
+  Storage Blob Data Contributor on the evidence storage account
+  Storage Blob Data Contributor on the Function host storage account
+  Storage Queue Data Contributor on the Function host storage account
+  Storage Table Data Contributor on the Function host storage account
+
+CyberTriage-LiveResponse-Collection managed identity:
+  Microsoft Sentinel Contributor on the Sentinel workspace
+
+Set-CyberTriage managed identity:
+  Microsoft Sentinel Contributor on the Sentinel workspace
+
+Check-CyberTriageQueue managed identity:
+  Log Analytics Reader on the Sentinel workspace
+  Microsoft Sentinel Contributor on the Sentinel workspace
+```
+
+The script does not make the admin an `Owner`. The admin already needs enough permission to create these role assignments.
+
 The Azure admin role is usually:
 
 ```text
