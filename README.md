@@ -45,6 +45,7 @@ CyberTriage/
       *.gcch-draft.json
       README.md
   docs/
+    admin-permission-handoff.md
     architecture.md
     commercial-vs-gcch.md
     deployment-step-by-step.md
@@ -73,12 +74,18 @@ You need these pieces before the flow can work:
 
 1. A Microsoft Sentinel workspace.
 2. Microsoft Defender for Endpoint with devices onboarded.
-3. Permission to create Logic Apps, API connections, a Function App, Storage Accounts, and role assignments.
-4. The Cyber Triage collector binary from the vendor.
-5. The `Run-CyberTriage.ps1` wrapper uploaded to the MDE Live Response Library.
-6. A storage account and container for encrypted Cyber Triage artifacts.
-7. A SAS broker Function that can create user-delegation SAS URLs.
-8. The three Logic Apps in this repo.
+3. Permission to create Logic Apps, API connections, a Function App, and Storage Accounts.
+4. A permission admin who can grant managed identity permissions, if the deployment operator cannot assign Azure RBAC roles.
+5. The Cyber Triage collector binary from the vendor.
+6. The `Run-CyberTriage.ps1` wrapper uploaded to the MDE Live Response Library.
+7. A storage account and container for encrypted Cyber Triage artifacts.
+8. A SAS broker Function that can create user-delegation SAS URLs.
+9. The three Logic Apps in this repo.
+
+Permissions are split into two documents:
+
+- [docs/permissions.md](docs/permissions.md) explains the human roles, managed identities, and per-Logic-App permissions.
+- [docs/admin-permission-handoff.md](docs/admin-permission-handoff.md) gives the exact handoff script for an Owner, User Access Administrator, Global Administrator, Cloud Application Administrator, or other admin who must grant permissions after deployment.
 
 ## High-Level Flow
 
@@ -118,7 +125,7 @@ Deploy in this order:
 11. Deploy `Set-CyberTriage`.
 12. Deploy `Check-CyberTriageQueue` disabled first.
 13. Create or verify the `ForensicCollectQueue` watchlist.
-14. Grant managed identity and connector permissions.
+14. Grant managed identity and connector permissions. If the deployer cannot do this, use [scripts/Grant-CyberTriagePermissions.ps1](scripts/Grant-CyberTriagePermissions.ps1) as the admin handoff.
 15. Run one controlled test against an active MDE device.
 16. Enable the queue checker recurrence.
 

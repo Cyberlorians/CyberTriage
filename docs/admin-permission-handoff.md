@@ -1,0 +1,170 @@
+# Admin Permission Handoff
+
+Use this page when the person deploying the ARM templates cannot assign managed identity permissions.
+
+The deployment can be done in two passes:
+
+1. Deployment operator clicks the ARM deployment buttons.
+2. Permission admin runs the permission script after the resources exist.
+
+## What The Deployment Operator Sends To The Admin
+
+Send these values to the Azure RBAC admin:
+
+```text
+Subscription ID
+Playbook resource group
+Sentinel workspace resource group
+Sentinel workspace name
+Evidence storage account resource group
+Evidence storage account name
+Function host storage account resource group
+Function host storage account name
+SAS broker Function App name
+Set-CyberTriage Logic App name
+Check-CyberTriageQueue Logic App name
+CyberTriage-LiveResponse-Collection Logic App name
+```
+
+Default Logic App names:
+
+```text
+Set-CyberTriage
+Check-CyberTriageQueue
+CyberTriage-LiveResponse-Collection
+```
+
+## What The Azure RBAC Admin Needs
+
+The Azure RBAC admin needs one of these at the target scopes:
+
+```text
+Owner
+User Access Administrator
+```
+
+Target scopes are usually:
+
+```text
+Evidence storage account
+Function host storage account
+Sentinel / Log Analytics workspace
+```
+
+## Azure RBAC Admin Command
+
+From the repo root:
+
+```powershell
+.\scripts\Grant-CyberTriagePermissions.ps1 `
+  -SubscriptionId '<subscription-guid>' `
+  -PlaybookResourceGroup '<playbook-resource-group>' `
+  -SentinelResourceGroup '<sentinel-resource-group>' `
+  -SentinelWorkspaceName '<sentinel-workspace-name>' `
+  -EvidenceStorageResourceGroup '<storage-resource-group>' `
+  -EvidenceStorageAccountName '<evidence-storage-account>' `
+  -FunctionHostStorageResourceGroup '<function-host-storage-resource-group>' `
+  -FunctionHostStorageAccountName '<function-host-storage-account>' `
+  -SasBrokerFunctionAppName '<sas-broker-function-app>'
+```
+
+Preview mode:
+
+```powershell
+.\scripts\Grant-CyberTriagePermissions.ps1 <same parameters> -WhatIf
+```
+
+If Function host storage still fails after minimum roles, rerun with:
+
+```powershell
+-IncludeHostStorageOwnerRoles
+```
+
+Use that only if needed, because it grants broader host storage permissions.
+
+## What The Script Grants
+
+The script grants the SAS broker Function identity:
+
+```text
+Storage Blob Delegator on evidence storage
+Storage Blob Data Contributor on evidence storage
+Storage Blob Data Contributor on Function host storage
+Storage Queue Data Contributor on Function host storage
+Storage Table Data Contributor on Function host storage
+```
+
+The script grants the Logic App identities:
+
+```text
+Set-CyberTriage:
+  Microsoft Sentinel Contributor on the Sentinel workspace
+
+Check-CyberTriageQueue:
+  Log Analytics Reader on the Sentinel workspace
+  Microsoft Sentinel Contributor on the Sentinel workspace
+
+CyberTriage-LiveResponse-Collection:
+  Microsoft Sentinel Contributor on the Sentinel workspace
+```
+
+## What The Entra Admin May Need To Do
+
+This is only needed if the customer uses a raw HTTP managed identity design for MDE API calls.
+
+The current commercial templates use WDATP connector actions for MDE operations, so the MDE connector may need portal authorization instead of app-role assignment.
+
+If raw HTTP managed identity is used, an Entra admin can run:
+
+```powershell
+.\scripts\Grant-CyberTriagePermissions.ps1 <same parameters> -GrantDefenderAppRoles
+```
+
+That optional grant targets the workflows that call MDE directly:
+
+```text
+Set-CyberTriage
+CyberTriage-LiveResponse-Collection
+```
+
+The queue checker does not call MDE directly, so it does not receive MDE app roles.
+
+The Entra admin may need one of these roles, depending on tenant policy:
+
+```text
+Global Administrator
+Privileged Role Administrator
+Cloud Application Administrator
+Application Administrator
+```
+
+The script dynamically looks up the Defender app role IDs on the WindowsDefenderATP service principal.
+
+## What The MDE Admin Still Needs To Do
+
+The MDE admin must make sure:
+
+```text
+Live Response is enabled
+The account or connector can run Live Response
+The account or connector can add/remove machine tags
+CyberTriageCollector.exe is uploaded to the Live Response Library
+Run-CyberTriage.ps1 is uploaded to the Live Response Library
+The target endpoint is Active in MDE before testing
+```
+
+## What The Deployer Checks After Admin Work
+
+After the admin finishes, run:
+
+```powershell
+.\scripts\Test-CyberTriageDeployment.ps1 `
+  -SubscriptionId '<subscription-guid>' `
+  -PlaybookResourceGroup '<playbook-resource-group>' `
+  -SentinelResourceGroup '<sentinel-resource-group>' `
+  -SentinelWorkspaceName '<sentinel-workspace-name>' `
+  -StorageAccountName '<evidence-storage-account>' `
+  -BrokerHealthUrl 'https://<function-app>.azurewebsites.net/api/health'
+```
+
+Then run one manual test against an MDE Active device.

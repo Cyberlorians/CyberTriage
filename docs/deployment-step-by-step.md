@@ -268,6 +268,20 @@ Do not skip this step.
 
 The most common failure is a workflow that exists but cannot query logs, update watchlists, call MDE, or create SAS.
 
+If the person doing the deployment cannot assign Azure RBAC roles, stop here and hand the admin this page:
+
+```text
+docs/admin-permission-handoff.md
+```
+
+The admin script is:
+
+```text
+scripts/Grant-CyberTriagePermissions.ps1
+```
+
+The script grants the SAS broker storage permissions and the Logic App workspace permissions after the resources exist.
+
 ## Step 14: Run A Controlled Test
 
 Choose one MDE device that is active.
