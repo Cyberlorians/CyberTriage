@@ -1,0 +1,30 @@
+# Local secrets and deployment parameter files
+*.local.json
+*.secret.json
+*.secrets.json
+*.parameters.local.json
+.env
+.env.*
+
+# Generated SAS URLs and temporary output
+*sas*.txt
+*sas*.json
+CyberTriageOutput/
+*.log
+*.tmp
+
+# Collector packages are customer/vendor supplied. Do not commit binaries.
+*.exe
+*.zip
+*.7z
+*.msi
+packages/
+!packages/.gitkeep
+
+# PowerShell and OS noise
+*.ps1xml
+.DS_Store
+Thumbs.db
+
+# Node dependencies for SAS broker
+node_modules/

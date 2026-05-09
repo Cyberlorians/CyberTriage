@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus2"
+    },
+    "TargetDeviceTag": {
+      "value": "ForensicCollect"
+    },
+    "DestinationStorageAccountName": {
+      "value": "<evidence-storage-account-name>"
+    },
+    "SasBrokerUrl": {
+      "value": "<secure-broker-url-do-not-commit-real-value>"
+    },
+    "SasExpiryMinutes": {
+      "value": 1440
+    },
+    "SasPermissions": {
+      "value": "racwdl"
+    },
+    "NotificationEmail": {
+      "value": "security-team@example.com"
+    },
+    "SentinelWorkspaceResourceGroup": {
+      "value": "Sentinel"
+    },
+    "SentinelWorkspaceName": {
+      "value": "<sentinel-workspace-name>"
+    },
+    "SentinelWorkspaceCustomerId": {
+      "value": "<workspace-guid>"
+    },
+    "SentinelWorkspaceSubscriptionId": {
+      "value": "<subscription-guid>"
+    },
+    "WatchlistAlias": {
+      "value": "ForensicCollectQueue"
+    },
+    "PollFrequencyMinutes": {
+      "value": 60
+    },
+    "OnlineWindowMinutes": {
+      "value": 60
+    }
+  }
+}

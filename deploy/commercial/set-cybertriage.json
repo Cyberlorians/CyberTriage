@@ -1,0 +1,309 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "3.0.0.0",
+  "metadata": {
+    "title": "Set-CyberTriage",
+    "description": "Microsoft Sentinel / Defender portal incident playbook. Tags incident host entities with the ForensicCollect MDE tag and enqueues each device into the ForensicCollectQueue Sentinel watchlist. The Check-CyberTriageQueue poller then dispatches collection when each device is online.",
+    "author": "Security Engineering"
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "TargetDeviceTag": {
+      "type": "string",
+      "defaultValue": "ForensicCollect",
+      "metadata": {
+        "description": "MDE device tag to apply to incident host entities."
+      }
+    },
+    "SentinelWorkspaceResourceGroup": {
+      "type": "string",
+      "defaultValue": "Sentinel"
+    },
+    "SentinelWorkspaceName": {
+      "type": "string",
+      "defaultValue": "<sentinel-workspace-name>"
+    },
+    "SentinelWorkspaceCustomerId": {
+      "type": "string",
+      "defaultValue": "<workspace-guid>"
+    },
+    "SentinelWorkspaceSubscriptionId": {
+      "type": "string",
+      "defaultValue": "[subscription().subscriptionId]"
+    },
+    "WatchlistAlias": {
+      "type": "string",
+      "defaultValue": "ForensicCollectQueue"
+    }
+  },
+  "variables": {
+    "PlaybookName": "Set-CyberTriage",
+    "sentinelConnectionName": "[concat('azuresentinel-', variables('PlaybookName'))]",
+    "sentinelConnectionId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'azuresentinel')]",
+    "defenderConnectionName": "[concat('wdatp-', variables('PlaybookName'))]",
+    "defenderConnectionId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'wdatp')]",
+    "defenderApiBaseUri": "https://api.securitycenter.microsoft.com",
+    "defenderApiAudience": "https://securitycenter.onmicrosoft.com/windowsatpservice",
+    "armBaseUri": "https://management.azure.com",
+    "armAudience": "https://management.azure.com/"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/connections",
+      "apiVersion": "2016-06-01",
+      "name": "[variables('sentinelConnectionName')]",
+      "location": "[parameters('location')]",
+      "kind": "V1",
+      "properties": {
+        "displayName": "[variables('sentinelConnectionName')]",
+        "api": {
+          "id": "[variables('sentinelConnectionId')]"
+        },
+        "parameterValueType": "Alternative"
+      }
+    },
+    {
+      "type": "Microsoft.Web/connections",
+      "apiVersion": "2016-06-01",
+      "name": "[variables('defenderConnectionName')]",
+      "location": "[parameters('location')]",
+      "kind": "V1",
+      "properties": {
+        "displayName": "[variables('defenderConnectionName')]",
+        "api": {
+          "id": "[variables('defenderConnectionId')]"
+        },
+        "parameterValueType": "Alternative"
+      }
+    },
+    {
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2019-05-01",
+      "name": "[variables('PlaybookName')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "purpose": "security-playbook",
+        "tool": "cybertriage",
+        "component": "set-cybertriage-tag",
+        "trigger-model": "sentinel-xdr-incident"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/connections', variables('sentinelConnectionName'))]",
+        "[resourceId('Microsoft.Web/connections', variables('defenderConnectionName'))]"
+      ],
+      "properties": {
+        "state": "Enabled",
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "3.0.0.0",
+          "parameters": {
+            "$connections": {
+              "type": "Object",
+              "defaultValue": {}
+            },
+            "TargetDeviceTag": {
+              "type": "String",
+              "defaultValue": "[parameters('TargetDeviceTag')]"
+            },
+            "WorkspaceSubscriptionId": {
+              "type": "String",
+              "defaultValue": "[parameters('SentinelWorkspaceSubscriptionId')]"
+            },
+            "WorkspaceResourceGroup": {
+              "type": "String",
+              "defaultValue": "[parameters('SentinelWorkspaceResourceGroup')]"
+            },
+            "WorkspaceName": {
+              "type": "String",
+              "defaultValue": "[parameters('SentinelWorkspaceName')]"
+            },
+            "WorkspaceId": {
+              "type": "String",
+              "defaultValue": "[parameters('SentinelWorkspaceCustomerId')]"
+            },
+            "WatchlistAlias": {
+              "type": "String",
+              "defaultValue": "[parameters('WatchlistAlias')]"
+            }
+          },
+          "triggers": {
+            "Microsoft_Sentinel_incident": {
+              "type": "ApiConnectionWebhook",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['azuresentinel']['connectionId']"
+                  }
+                },
+                "body": {
+                  "callback_url": "@{listCallbackUrl()}"
+                },
+                "path": "/incident-creation"
+              }
+            }
+          },
+          "actions": {
+            "Entities_Get_Hosts": {
+              "type": "ApiConnection",
+              "runAfter": {},
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['azuresentinel']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/entities/host",
+                "body": "@triggerBody()?['object']?['properties']?['relatedEntities']"
+              }
+            },
+            "For_Each_Host_Entity": {
+              "type": "Foreach",
+              "runAfter": {
+                "Entities_Get_Hosts": [
+                  "Succeeded"
+                ]
+              },
+              "foreach": "@coalesce(body('Entities_Get_Hosts')?['Hosts'], json('[]'))",
+              "runtimeConfiguration": {
+                "concurrency": {
+                  "repetitions": 1
+                }
+              },
+              "actions": {
+                "Compose_MdatpDeviceId": {
+                  "type": "Compose",
+                  "runAfter": {},
+                  "inputs": "@coalesce(items('For_Each_Host_Entity')?['additionalData']?['MdatpDeviceId'], '')"
+                },
+                "If_MdatpDeviceId_Provided": {
+                  "type": "If",
+                  "runAfter": {
+                    "Compose_MdatpDeviceId": [
+                      "Succeeded"
+                    ]
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "not": {
+                          "equals": [
+                            "@outputs('Compose_MdatpDeviceId')",
+                            ""
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Add_ForensicCollect_Tag": {
+                      "type": "ApiConnection",
+                      "runAfter": {},
+                      "inputs": {
+                        "host": {
+                          "connection": {
+                            "name": "@parameters('$connections')['wdatp']['connectionId']"
+                          }
+                        },
+                        "method": "post",
+                        "path": "/api/machines/@{encodeURIComponent(outputs('Compose_MdatpDeviceId'))}/tags",
+                        "body": {
+                          "Value": "@{parameters('TargetDeviceTag')}",
+                          "Action": "Add"
+                        }
+                      }
+                    },
+                    "Enqueue_To_Watchlist": {
+                      "type": "ApiConnection",
+                      "runAfter": {
+                        "Add_ForensicCollect_Tag": [
+                          "Succeeded"
+                        ]
+                      },
+                      "inputs": {
+                        "host": {
+                          "connection": {
+                            "name": "@parameters('$connections')['azuresentinel']['connectionId']"
+                          }
+                        },
+                        "method": "put",
+                        "path": "/Watchlists/subscriptions/@{encodeURIComponent(parameters('WorkspaceSubscriptionId'))}/resourceGroups/@{encodeURIComponent(parameters('WorkspaceResourceGroup'))}/workspaces/@{encodeURIComponent(parameters('WorkspaceId'))}/watchlists/@{encodeURIComponent(parameters('WatchlistAlias'))}/watchlistItem",
+                        "body": {
+                          "MdatpDeviceId": "@{outputs('Compose_MdatpDeviceId')}",
+                          "DeviceName": "@{coalesce(items('For_Each_Host_Entity')?['HostName'], items('For_Each_Host_Entity')?['NetBiosName'], '')}",
+                          "IncidentId": "@{coalesce(triggerBody()?['object']?['properties']?['incidentNumber'], triggerBody()?['object']?['name'], '')}",
+                          "TagName": "@{parameters('TargetDeviceTag')}",
+                          "EnqueuedTime": "@{utcNow()}",
+                          "Attempts": 0
+                        }
+                      }
+                    }
+                  },
+                  "else": {
+                    "actions": {}
+                  }
+                }
+              }
+            }
+          },
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "azuresentinel": {
+                "connectionId": "[resourceId('Microsoft.Web/connections', variables('sentinelConnectionName'))]",
+                "connectionName": "[variables('sentinelConnectionName')]",
+                "id": "[variables('sentinelConnectionId')]",
+                "connectionProperties": {
+                  "authentication": {
+                    "type": "ManagedServiceIdentity"
+                  }
+                }
+              },
+              "wdatp": {
+                "connectionId": "[resourceId('Microsoft.Web/connections', variables('defenderConnectionName'))]",
+                "connectionName": "[variables('defenderConnectionName')]",
+                "id": "[variables('defenderConnectionId')]",
+                "connectionProperties": {
+                  "authentication": {
+                    "type": "ManagedServiceIdentity"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "playbookName": {
+      "type": "string",
+      "value": "[variables('PlaybookName')]"
+    },
+    "sentinelConnectionName": {
+      "type": "string",
+      "value": "[variables('sentinelConnectionName')]"
+    },
+    "requiredDefenderApiPermissions": {
+      "type": "array",
+      "value": [
+        "Machine.ReadWrite.All",
+        "Machine.Read.All"
+      ]
+    },
+    "requiredRoleAssignments": {
+      "type": "array",
+      "value": [
+        "Microsoft Sentinel Contributor on the Sentinel workspace (to write watchlist items)"
+      ]
+    }
+  }
+}
