@@ -43,8 +43,6 @@
     "PlaybookName": "Set-CyberTriage",
     "sentinelConnectionName": "[concat('azuresentinel-', variables('PlaybookName'))]",
     "sentinelConnectionId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'azuresentinel')]",
-    "defenderConnectionName": "[concat('wdatp-', variables('PlaybookName'))]",
-    "defenderConnectionId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'wdatp')]",
     "defenderApiBaseUri": "https://api.securitycenter.microsoft.com",
     "defenderApiAudience": "https://securitycenter.onmicrosoft.com/windowsatpservice",
     "armBaseUri": "https://management.azure.com",
@@ -66,20 +64,6 @@
       }
     },
     {
-      "type": "Microsoft.Web/connections",
-      "apiVersion": "2016-06-01",
-      "name": "[variables('defenderConnectionName')]",
-      "location": "[parameters('location')]",
-      "kind": "V1",
-      "properties": {
-        "displayName": "[variables('defenderConnectionName')]",
-        "api": {
-          "id": "[variables('defenderConnectionId')]"
-        },
-        "parameterValueType": "Alternative"
-      }
-    },
-    {
       "type": "Microsoft.Logic/workflows",
       "apiVersion": "2019-05-01",
       "name": "[variables('PlaybookName')]",
@@ -94,8 +78,7 @@
         "type": "SystemAssigned"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/connections', variables('sentinelConnectionName'))]",
-        "[resourceId('Microsoft.Web/connections', variables('defenderConnectionName'))]"
+        "[resourceId('Microsoft.Web/connections', variables('sentinelConnectionName'))]"
       ],
       "properties": {
         "state": "Enabled",
@@ -203,16 +186,18 @@
                   },
                   "actions": {
                     "Add_ForensicCollect_Tag": {
-                      "type": "ApiConnection",
+                      "type": "Http",
                       "runAfter": {},
                       "inputs": {
-                        "host": {
-                          "connection": {
-                            "name": "@parameters('$connections')['wdatp']['connectionId']"
-                          }
+                        "method": "POST",
+                        "uri": "@{concat('https://api.securitycenter.microsoft.com/api/machines/', encodeURIComponent(outputs('Compose_MdatpDeviceId')), '/tags')}",
+                        "headers": {
+                          "Content-Type": "application/json"
                         },
-                        "method": "post",
-                        "path": "/api/machines/@{encodeURIComponent(outputs('Compose_MdatpDeviceId'))}/tags",
+                        "authentication": {
+                          "type": "ManagedServiceIdentity",
+                          "audience": "https://securitycenter.onmicrosoft.com/windowsatpservice"
+                        },
                         "body": {
                           "Value": "@{parameters('TargetDeviceTag')}",
                           "Action": "Add"
@@ -267,16 +252,6 @@
                   }
                 }
               },
-              "wdatp": {
-                "connectionId": "[resourceId('Microsoft.Web/connections', variables('defenderConnectionName'))]",
-                "connectionName": "[variables('defenderConnectionName')]",
-                "id": "[variables('defenderConnectionId')]",
-                "connectionProperties": {
-                  "authentication": {
-                    "type": "ManagedServiceIdentity"
-                  }
-                }
-              }
             }
           }
         }
@@ -295,8 +270,7 @@
     "requiredDefenderApiPermissions": {
       "type": "array",
       "value": [
-        "Machine.ReadWrite.All",
-        "Machine.Read.All"
+        "Machine.ReadWrite.All"
       ]
     },
     "requiredRoleAssignments": {

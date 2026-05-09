@@ -466,7 +466,7 @@
     },
     "nextStep": {
       "type": "string",
-      "value": "Authorize API connections, create the ForensicCollectQueue watchlist, upload MDE Live Response library files, and run one test. See docs/setting-permissions-step-by-step.md."
+      "value": "Grant Defender for Endpoint app roles if the full ARM deployer could not run the admin script, authorize any non-MDE API connections that still require sign-in, create the ForensicCollectQueue watchlist, upload MDE Live Response library files, and run one test. See docs/setting-permissions-step-by-step.md."
     }
   }
 }

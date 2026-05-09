@@ -37,9 +37,9 @@ Tasks:
 
 - Script role assignment for broker managed identity.
 - Script role assignment for Logic App managed identities.
-- Script MDE application role assignment if raw HTTP managed identity is used.
+- Script MDE application role assignment for raw HTTP managed identity.
 - Document which API connections still require portal authorization.
-- Decide whether to replace WDATP connector actions with raw HTTP + managed identity.
+- Keep MDE actions on raw HTTP + managed identity instead of WDATP connector actions.
 
 ## Phase 4: Commercial One-Click Deployment
 

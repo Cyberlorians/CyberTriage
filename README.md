@@ -152,6 +152,8 @@ Use the full deployment button first. It deploys the SAS broker Function App and
 
 Use an account that is `Owner` on the subscription for this deployment. The template creates the managed identities and assigns their Azure RBAC roles automatically.
 
+The full ARM template can set Azure RBAC. It cannot, by itself, grant Microsoft Defender for Endpoint application roles on the WindowsDefenderATP Enterprise App. Set those MDE app roles after deployment with [scripts/Grant-CyberTriagePermissions.ps1](scripts/Grant-CyberTriagePermissions.ps1), or have an Entra admin grant them manually.
+
 The template asks for the Sentinel workspace subscription, resource group, workspace name, and workspace customer ID. It uses those values to run a nested RBAC deployment named `Deploy-Sentinel-Rbac` at the Sentinel workspace resource group, then assigns the Logic App managed identities permissions on that workspace.
 
 If Azure shows a quota error like `Dynamic VMs: 0`, pick a region where the subscription has Azure Functions Consumption quota or ask the Azure subscription owner to raise the quota. That is an Azure quota problem, not a CyberTriage template problem.
@@ -168,6 +170,12 @@ Queue checker Logic App: Check-CyberTriageQueue
 Evidence storage account: the name you enter, or the generated default
 Evidence container: cybertriage-results
 Watchlist name you create after deployment: ForensicCollectQueue
+```
+
+The full deployment creates the evidence storage account and this blob container:
+
+```text
+cybertriage-results
 ```
 
 The full deployment sets these Azure RBAC permissions for you:
@@ -195,7 +203,37 @@ Check-CyberTriageQueue:
   Microsoft Sentinel Contributor on the Sentinel workspace
 ```
 
-After the button finishes, do the steps below. Do not skip them. ARM can assign Azure RBAC roles, but it cannot sign in to every API connector for you.
+The MDE app roles still need to be granted after deployment:
+
+```text
+Set-CyberTriage managed identity:
+  Machine.ReadWrite.All on the WindowsDefenderATP Enterprise App
+
+CyberTriage-LiveResponse-Collection managed identity:
+  Machine.Read.All on the WindowsDefenderATP Enterprise App
+  Machine.ReadWrite.All on the WindowsDefenderATP Enterprise App
+  Machine.LiveResponse on the WindowsDefenderATP Enterprise App
+
+Check-CyberTriageQueue managed identity:
+  No MDE app roles. It does not call MDE directly.
+```
+
+Permission breakdown by identity:
+
+| Identity | What It Touches | Permission Needed | How It Is Set |
+|---|---|---|---|
+| SAS broker Function App managed identity | Evidence storage account and `cybertriage-results` container | Storage Blob Delegator; Storage Blob Data Contributor | Full ARM template, permission script, or manual Azure RBAC |
+| SAS broker Function App managed identity | Function host storage account | Storage Blob Data Contributor; Storage Queue Data Contributor; Storage Table Data Contributor | SAS broker ARM template, permission script, or manual Azure RBAC |
+| Set-CyberTriage managed identity | Sentinel workspace/watchlist | Microsoft Sentinel Contributor | Full ARM template, permission script, or manual Azure RBAC |
+| Set-CyberTriage managed identity | MDE API | Machine.ReadWrite.All | Permission script or manual Entra app-role assignment |
+| Check-CyberTriageQueue managed identity | Log Analytics workspace | Log Analytics Reader | Full ARM template, permission script, or manual Azure RBAC |
+| Check-CyberTriageQueue managed identity | Sentinel watchlist cleanup | Microsoft Sentinel Contributor | Full ARM template, permission script, or manual Azure RBAC |
+| CyberTriage-LiveResponse-Collection managed identity | Sentinel watchlist update/delete | Microsoft Sentinel Contributor | Full ARM template, permission script, or manual Azure RBAC |
+| CyberTriage-LiveResponse-Collection managed identity | MDE API | Machine.Read.All; Machine.ReadWrite.All; Machine.LiveResponse | Permission script or manual Entra app-role assignment |
+| CyberTriage-LiveResponse-Collection workflow | SAS broker URL | Broker shared secret in workflow parameter | Full ARM template parameter |
+| CyberTriage-LiveResponse-Collection workflow | Office 365 email | Optional Office 365 connector authorization | Manual only, and only if email notification is wanted |
+
+After the button finishes, do the steps below. Do not skip them. ARM can assign Azure RBAC roles, but the MDE app-role grants live in Entra ID and are handled by the script or by an Entra admin.
 
 ### Copy And Paste Permission Script For The Azure Admin
 
@@ -239,6 +277,21 @@ Check-CyberTriageQueue managed identity:
   Microsoft Sentinel Contributor on the Sentinel workspace
 ```
 
+The script also grants these MDE application roles unless you add `-SkipDefenderAppRoles`:
+
+```text
+Set-CyberTriage managed identity:
+  Machine.ReadWrite.All
+
+CyberTriage-LiveResponse-Collection managed identity:
+  Machine.Read.All
+  Machine.ReadWrite.All
+  Machine.LiveResponse
+
+Check-CyberTriageQueue managed identity:
+  No MDE app roles
+```
+
 The script does not make the admin an `Owner`. The admin already needs enough permission to create these role assignments.
 
 The Azure admin role is usually:
@@ -253,19 +306,25 @@ or:
 User Access Administrator
 ```
 
-Global Administrator or Application Administrator is only needed if the customer uses raw HTTP managed identity calls to MDE and wants to grant MDE application roles.
+Global Administrator, Privileged Role Administrator, Cloud Application Administrator, or Application Administrator is needed for the MDE application-role grants. If the Azure RBAC admin does not have that Entra permission, run the script with `-SkipDefenderAppRoles` and have an Entra admin grant the MDE app roles manually after deployment.
 
 ### Authorize API Connections
 
-Azure RBAC permissions and API connection sign-in are different. Do both.
+Azure RBAC permissions, MDE app roles, and API connection sign-in are different. Check each one.
+
+MDE is not authorized with a WDATP connector in the commercial templates. The MDE calls use raw HTTP with the Logic App managed identity and this token audience:
+
+```text
+https://securitycenter.onmicrosoft.com/windowsatpservice
+```
+
+If MDE actions fail with `403`, check the MDE app roles above.
 
 Open the Azure portal and go to the API connection resources created by the deployment. Authorize anything that shows not connected.
 
 Important connections:
 
 ```text
-wdatp-Set-CyberTriage
-wdatp-CyberTriage-LiveResponse-Collection-cards
 azuresentinel-Set-CyberTriage
 azuresentinel-CyberTriage-LiveResponse-Collection
 azuresentinel-Check-CyberTriageQueue
@@ -312,9 +371,11 @@ Set permissions after deployment of `CyberTriage-LiveResponse-Collection`:
 ```text
 CyberTriage-LiveResponse-Collection managed identity:
   Microsoft Sentinel Contributor on the Sentinel workspace
+  Machine.Read.All on the WindowsDefenderATP Enterprise App
+  Machine.ReadWrite.All on the WindowsDefenderATP Enterprise App
+  Machine.LiveResponse on the WindowsDefenderATP Enterprise App
 
 Connector authorization:
-  WDATP connection must be authorized for MDE Live Response and tag removal
   Office 365 connection is optional for email notification
 ```
 
@@ -327,9 +388,9 @@ Set permissions after deployment of `Set-CyberTriage`:
 ```text
 Set-CyberTriage managed identity:
   Microsoft Sentinel Contributor on the Sentinel workspace
+  Machine.ReadWrite.All on the WindowsDefenderATP Enterprise App
 
 Connector authorization:
-  WDATP connection must be authorized for MDE machine tagging
   Sentinel connection must be authorized for incident and watchlist actions
 ```
 
@@ -368,14 +429,16 @@ Who runs that command:
 
 ```text
 Azure RBAC roles: Owner or User Access Administrator at the target scopes
-Optional MDE app-role grants: Global Administrator, Privileged Role Administrator, Cloud Application Administrator, or Application Administrator
+MDE app-role grants: Global Administrator, Privileged Role Administrator, Cloud Application Administrator, or Application Administrator
 ```
 
-Use the optional MDE app-role grant only for raw HTTP managed identity designs:
+If one person cannot do both Azure RBAC and Entra app-role assignment, split the work:
 
 ```powershell
-.\scripts\Grant-CyberTriagePermissions.ps1 <same parameters> -GrantDefenderAppRoles
+.\scripts\Grant-CyberTriagePermissions.ps1 <same parameters> -SkipDefenderAppRoles
 ```
+
+Then have the Entra admin grant the MDE app roles listed above to `Set-CyberTriage` and `CyberTriage-LiveResponse-Collection`.
 
 For the longer version, see [docs/setting-permissions-step-by-step.md](docs/setting-permissions-step-by-step.md).
 

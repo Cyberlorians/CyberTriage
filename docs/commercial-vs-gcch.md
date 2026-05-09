@@ -99,10 +99,9 @@ For each cloud, verify:
 
 ```text
 azuresentinel connector exists
-wdatp connector exists
 office365 connector exists, if notifications are used
 azuremonitorlogs connector supports managed identity
-azureblob connector supports managed identity, if used
+raw HTTP managed identity can get an MDE token with WindowsDefenderATP app roles
 ```
 
 If a connector is not available or does not support the needed auth mode, use raw HTTP actions with managed identity instead.

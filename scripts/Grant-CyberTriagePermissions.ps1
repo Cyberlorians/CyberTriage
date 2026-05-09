@@ -13,18 +13,16 @@
     The script grants Azure RBAC roles to the system-assigned managed identities
     used by the SAS broker Function and the three Logic Apps.
 
-    Optional: with -GrantDefenderAppRoles, the script also grants Microsoft
-    Defender for Endpoint application roles to the Logic App managed identities
-    through Microsoft Graph. Use that option only for a raw-HTTP managed identity
-    MDE design, or when your template version requires direct MDE API calls by
-    the workflow identity. The current connector-based templates may still need
-    API connection authorization in the Azure portal.
+    The script also grants Microsoft Defender for Endpoint application roles to
+    the Logic App managed identities through Microsoft Graph. The commercial
+    templates use raw HTTP actions with managed identity for MDE calls, so these
+    Entra app-role assignments are required unless they are set manually.
 
 .PERMISSIONS REQUIRED TO RUN
     Azure RBAC role assignment section:
       - Owner OR User Access Administrator at each target scope.
 
-    Defender app role section (-GrantDefenderAppRoles):
+    Defender app role section:
       - A tenant role that can assign app roles to service principals, commonly
         Global Administrator, Privileged Role Administrator, Cloud Application
         Administrator, or Application Administrator depending on tenant policy.
@@ -70,12 +68,32 @@ param(
 
     [switch]$IncludeHostStorageOwnerRoles,
 
+    [switch]$SkipDefenderAppRoles,
+
     [switch]$GrantDefenderAppRoles,
 
-    [string[]]$DefenderAppRoles = @('Machine.Read.All', 'Machine.ReadWrite.All')
+    [string[]]$SetDefenderAppRoles = @('Machine.ReadWrite.All'),
+
+    [string[]]$CollectionDefenderAppRoles = @('Machine.Read.All', 'Machine.ReadWrite.All', 'Machine.LiveResponse'),
+
+    [string[]]$DefenderAppRoles = @()
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ($SkipDefenderAppRoles -and $GrantDefenderAppRoles) {
+    throw 'Do not use -SkipDefenderAppRoles and -GrantDefenderAppRoles together.'
+}
+
+if ($DefenderAppRoles.Count -gt 0) {
+    Write-Warning 'The -DefenderAppRoles parameter is retained for older commands. It applies the same Defender app roles to Set-CyberTriage and CyberTriage-LiveResponse-Collection. Prefer -SetDefenderAppRoles and -CollectionDefenderAppRoles for least privilege.'
+    $SetDefenderAppRoles = $DefenderAppRoles
+    $CollectionDefenderAppRoles = $DefenderAppRoles
+}
+
+if ($GrantDefenderAppRoles) {
+    Write-Warning 'Defender app roles are granted by default. The -GrantDefenderAppRoles switch is retained for older commands and is no longer required.'
+}
 
 function Write-Section {
     param([string]$Name)
@@ -232,19 +250,20 @@ Grant-AzureRoleIfMissing -PrincipalId $queuePrincipalId -RoleName 'Log Analytics
 Grant-AzureRoleIfMissing -PrincipalId $queuePrincipalId -RoleName 'Microsoft Sentinel Contributor' -Scope $workspaceScope -Reason 'Queue checker deletes duplicate watchlist items and dispatches current queue rows.'
 Grant-AzureRoleIfMissing -PrincipalId $collectionPrincipalId -RoleName 'Microsoft Sentinel Contributor' -Scope $workspaceScope -Reason 'Collection playbook updates blocked queue rows and deletes queue rows after LR handoff.'
 
-if ($GrantDefenderAppRoles) {
-    Write-Section 'Grant optional Defender for Endpoint application roles'
-    foreach ($principalId in @($setPrincipalId, $collectionPrincipalId)) {
-        foreach ($roleValue in $DefenderAppRoles) {
-            Grant-DefenderAppRoleIfMissing -PrincipalId $principalId -RoleValue $roleValue
-        }
-    }
-} else {
+if ($SkipDefenderAppRoles) {
     Write-Section 'Defender app roles skipped'
-    Write-Host 'Skipped Defender app role grants because -GrantDefenderAppRoles was not supplied.'
-    Write-Host 'The connector-based templates may still require API connection authorization in the Azure portal.'
+    Write-Host 'Skipped Defender for Endpoint app-role grants because -SkipDefenderAppRoles was supplied.'
+    Write-Host 'Set-CyberTriage and CyberTriage-LiveResponse-Collection will not be able to call the MDE API with managed identity until those app roles are assigned manually.'
+} else {
+    Write-Section 'Grant Defender for Endpoint application roles'
+    foreach ($roleValue in $SetDefenderAppRoles) {
+        Grant-DefenderAppRoleIfMissing -PrincipalId $setPrincipalId -RoleValue $roleValue
+    }
+    foreach ($roleValue in $CollectionDefenderAppRoles) {
+        Grant-DefenderAppRoleIfMissing -PrincipalId $collectionPrincipalId -RoleValue $roleValue
+    }
 }
 
 Write-Section 'Done'
 Write-Host 'Permission assignment pass completed.'
-Write-Host 'If any API connections still show unauthorized in Azure Portal, authorize those connector connections separately.'
+Write-Host 'If any non-MDE API connections still show unauthorized in Azure Portal, authorize those connector connections separately.'

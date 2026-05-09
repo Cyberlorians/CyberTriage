@@ -121,21 +121,29 @@ CyberTriage-LiveResponse-Collection:
 
 ## What The Entra Admin May Need To Do
 
-This is only needed if the customer uses a raw HTTP managed identity design for MDE API calls.
+This is required for the current commercial templates because MDE calls use raw HTTP with Logic App managed identity.
 
-The current commercial templates use WDATP connector actions for MDE operations, so the MDE connector may need portal authorization instead of app-role assignment.
+The MDE app roles live on the WindowsDefenderATP Enterprise App in Entra ID. They are not Azure RBAC roles.
 
-If raw HTTP managed identity is used, an Entra admin can run:
+If the same admin has both Azure RBAC assignment rights and Entra app-role assignment rights, they can run the main script once:
 
 ```powershell
-.\scripts\Grant-CyberTriagePermissions.ps1 <same parameters> -GrantDefenderAppRoles
+.\scripts\Grant-CyberTriagePermissions.ps1 <same parameters>
 ```
 
-That optional grant targets the workflows that call MDE directly:
+If the Azure RBAC admin does not have Entra app-role assignment rights, they should run the script with `-SkipDefenderAppRoles`, then the Entra admin grants these app roles manually:
 
 ```text
-Set-CyberTriage
-CyberTriage-LiveResponse-Collection
+Set-CyberTriage managed identity:
+  Machine.ReadWrite.All
+
+CyberTriage-LiveResponse-Collection managed identity:
+  Machine.Read.All
+  Machine.ReadWrite.All
+  Machine.LiveResponse
+
+Check-CyberTriageQueue managed identity:
+  No MDE app roles
 ```
 
 The queue checker does not call MDE directly, so it does not receive MDE app roles.

@@ -100,6 +100,14 @@ That script sets these Azure RBAC permissions:
 | Check-CyberTriageQueue managed identity | Sentinel workspace | Log Analytics Reader; Microsoft Sentinel Contributor |
 | CyberTriage-LiveResponse-Collection managed identity | Sentinel workspace | Microsoft Sentinel Contributor |
 
+The script also sets these Microsoft Defender for Endpoint application roles unless you add `-SkipDefenderAppRoles`:
+
+| Identity | Enterprise App | App Roles |
+|---|---|---|
+| Set-CyberTriage managed identity | WindowsDefenderATP | Machine.ReadWrite.All |
+| CyberTriage-LiveResponse-Collection managed identity | WindowsDefenderATP | Machine.Read.All; Machine.ReadWrite.All; Machine.LiveResponse |
+| Check-CyberTriageQueue managed identity | WindowsDefenderATP | None. It does not call MDE directly. |
+
 ## Manual Method: Azure Portal Step By Step
 
 Use this if the customer does not want to run a script or if the full Owner deployment was not used.
@@ -199,8 +207,6 @@ Open each Logic App and check its API connections.
 Connections that may need authorization:
 
 ```text
-wdatp-Set-CyberTriage
-wdatp-CyberTriage-LiveResponse-Collection-cards
 azuresentinel-Set-CyberTriage
 azuresentinel-CyberTriage-LiveResponse-Collection
 azuresentinel-Check-CyberTriageQueue
@@ -216,7 +222,7 @@ For each connection:
 4. Save the connection.
 5. Return to the Logic App and confirm the action no longer says unauthorized.
 
-The `wdatp` connection is the Microsoft Defender for Endpoint connection. If it is not authorized, MDE tagging or Live Response actions can fail even when Azure RBAC roles are correct.
+MDE is not authorized with a `wdatp` connector in the current commercial templates. MDE actions use raw HTTP with the Logic App managed identity. If MDE tagging or Live Response fails with `403`, check the MDE app roles on the WindowsDefenderATP Enterprise App.
 
 The `office365-CyberTriage-LiveResponse-Collection` connection is only for email notification. Connect it if you want email notifications. If not, leave it unused or remove the email action.
 
@@ -242,23 +248,28 @@ MdatpDeviceId
 
 The queue checker expects that exact alias and those exact column names.
 
-### Set Optional Defender App Roles
+### Set Defender App Roles
 
-Do this only if the deployment uses raw HTTP actions with managed identity to call MDE.
+Do this for the current commercial templates. They use raw HTTP actions with managed identity to call MDE.
 
-The current commercial templates use WDATP connector actions for MDE operations, so most customers authorize the connector instead.
+If the permission script ran without `-SkipDefenderAppRoles`, this is already done.
 
-If raw HTTP managed identity is used, an Entra admin can run:
+If the Azure RBAC admin skipped MDE app roles, an Entra admin can either grant these roles manually on the WindowsDefenderATP Enterprise App or rerun the permission script without `-SkipDefenderAppRoles`:
 
 ```powershell
-.\scripts\Grant-CyberTriagePermissions.ps1 <same parameters> -GrantDefenderAppRoles
+.\scripts\Grant-CyberTriagePermissions.ps1 <same parameters>
 ```
 
-That grants Defender app roles to:
+Required roles:
 
 ```text
-Set-CyberTriage
-CyberTriage-LiveResponse-Collection
+Set-CyberTriage managed identity:
+  Machine.ReadWrite.All
+
+CyberTriage-LiveResponse-Collection managed identity:
+  Machine.Read.All
+  Machine.ReadWrite.All
+  Machine.LiveResponse
 ```
 
 The queue checker does not call MDE directly.
@@ -342,6 +353,8 @@ SAS broker has host storage data roles on Function host storage.
 Set-CyberTriage has Microsoft Sentinel Contributor on the workspace.
 Check-CyberTriageQueue has Log Analytics Reader and Microsoft Sentinel Contributor on the workspace.
 CyberTriage-LiveResponse-Collection has Microsoft Sentinel Contributor on the workspace.
+Set-CyberTriage has Machine.ReadWrite.All on WindowsDefenderATP.
+CyberTriage-LiveResponse-Collection has Machine.Read.All, Machine.ReadWrite.All, and Machine.LiveResponse on WindowsDefenderATP.
 API connections show authorized in the Azure portal.
 ```
 
@@ -351,6 +364,7 @@ API connections show authorized in the Azure portal.
 Contributor cannot assign roles by itself. Use Owner or User Access Administrator for role assignments.
 A managed identity object ID is not the same as the Azure resource ID.
 Connector authorization is separate from Azure RBAC.
+MDE app-role assignment is separate from Azure RBAC.
 The MDE API token audience is not the same as the MDE API URL for raw HTTP managed identity designs.
 A VM running in Azure is not enough. The endpoint must be Active in MDE for Live Response.
 ```

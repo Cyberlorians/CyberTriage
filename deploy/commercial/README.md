@@ -29,7 +29,7 @@ Check-CyberTriageQueue
 
 The SAS broker Function uses an Azure Functions Consumption plan. If Azure reports `Dynamic VMs: 0`, choose a region with quota or request quota from the subscription owner.
 
-After deployment, ARM has already assigned the Azure RBAC roles if the deployment account was `Owner`. You still authorize API connections and create the watchlist. The plain-language steps are in:
+After deployment, ARM has already assigned the Azure RBAC roles if the deployment account was `Owner`. You still grant Defender for Endpoint app roles, authorize any non-MDE API connections that need sign-in, and create the watchlist. The plain-language steps are in:
 
 ```text
 docs/setting-permissions-step-by-step.md
@@ -39,6 +39,18 @@ Create the Sentinel watchlist with this exact alias:
 
 ```text
 ForensicCollectQueue
+```
+
+MDE calls use raw HTTP with Logic App managed identity, not the WDATP connector. The required WindowsDefenderATP app roles are:
+
+```text
+Set-CyberTriage:
+  Machine.ReadWrite.All
+
+CyberTriage-LiveResponse-Collection:
+  Machine.Read.All
+  Machine.ReadWrite.All
+  Machine.LiveResponse
 ```
 
 Use this CSV template:

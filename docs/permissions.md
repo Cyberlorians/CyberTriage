@@ -92,8 +92,9 @@ Use this handoff model:
 1. The deployer creates the resources with the ARM buttons.
 2. The deployer gives the Azure RBAC admin the resource names.
 3. The Azure RBAC admin runs [scripts/Grant-CyberTriagePermissions.ps1](../scripts/Grant-CyberTriagePermissions.ps1).
-4. The Entra admin runs the optional Defender app-role section only if the template version uses raw HTTP managed identity for MDE.
-5. The MDE admin authorizes or validates MDE connector access and uploads Live Response library files.
+4. If the Azure RBAC admin cannot assign Entra app roles, they run the script with `-SkipDefenderAppRoles`.
+5. The Entra admin grants the MDE app roles to the Logic App managed identities manually or reruns the script without `-SkipDefenderAppRoles`.
+6. The MDE admin uploads Live Response library files and validates Live Response policy.
 
 Example command for the Azure RBAC admin:
 
@@ -116,15 +117,15 @@ Example command when the admin wants to preview changes first:
 .\scripts\Grant-CyberTriagePermissions.ps1 <same parameters> -WhatIf
 ```
 
-Example command for a raw-HTTP MDE managed identity design:
+Example command when the Azure RBAC admin cannot grant Defender app roles:
 
 ```powershell
-.\scripts\Grant-CyberTriagePermissions.ps1 <same parameters> -GrantDefenderAppRoles
+.\scripts\Grant-CyberTriagePermissions.ps1 <same parameters> -SkipDefenderAppRoles
 ```
 
-The current commercial templates use WDATP managed connectors for MDE actions. Those connectors may still require portal authorization. Azure RBAC role assignment alone does not authorize every managed connector.
+The current commercial templates use raw HTTP actions with managed identity for MDE. They do not use the WDATP connector for MDE actions.
 
-The optional Defender app-role grant in the script targets `Set-CyberTriage` and `CyberTriage-LiveResponse-Collection`. The queue checker does not call MDE directly, so it does not receive MDE app roles.
+The Defender app-role grant in the script targets `Set-CyberTriage` and `CyberTriage-LiveResponse-Collection`. The queue checker does not call MDE directly, so it does not receive MDE app roles.
 
 ## SAS Broker Function Managed Identity
 
@@ -173,11 +174,11 @@ Required access:
 | Area | Permission |
 |---|---|
 | Sentinel workspace | Microsoft Sentinel Contributor, so it can work with watchlists and incident context. |
-| MDE | Permission to add machine tags. With the connector template, this is handled by the WDATP API connection authorization. With raw HTTP managed identity, grant the needed MDE application roles to the workflow identity. |
+| MDE | `Machine.ReadWrite.All` application role on the WindowsDefenderATP Enterprise App, so it can add machine tags through raw HTTP managed identity. |
 
-Important connector note:
+Important MDE note:
 
-The template creates API connections, but some connections still need an authorized user or managed identity configuration after deployment. If the WDATP connection is unauthorized, device tagging fails even if the Logic App exists.
+The MDE token audience is `https://securitycenter.onmicrosoft.com/windowsatpservice`. If this identity does not have the MDE app role, device tagging fails even if Azure RBAC is correct.
 
 ## Check-CyberTriageQueue Logic App Permissions
 
@@ -223,7 +224,7 @@ Required access:
 | Area | Permission |
 |---|---|
 | SAS broker | Access to the broker URL and broker secret or function key, depending on broker auth model. |
-| MDE | Permission to read machine actions, run Live Response, and remove machine tags. With connector templates, this is handled by WDATP API connection authorization. With raw HTTP managed identity, grant MDE application roles. |
+| MDE | `Machine.Read.All`, `Machine.ReadWrite.All`, and `Machine.LiveResponse` application roles on the WindowsDefenderATP Enterprise App. |
 | Sentinel workspace | Microsoft Sentinel Contributor, so the workflow can update blocked rows and delete queue items. |
 | Office 365 | Optional. Only needed for email notification. If the email action fails, the collection handoff can still succeed. |
 
@@ -231,9 +232,7 @@ The endpoint uploads directly to Blob Storage through SAS. The collection Logic 
 
 ## Microsoft Defender For Endpoint App Roles
 
-The current templates use WDATP connector actions for MDE operations. In that model, connector authorization is still important.
-
-If the solution is changed to raw HTTP actions with managed identity, the workflow identity must receive MDE application roles on the WindowsDefenderATP service principal.
+The current commercial templates use raw HTTP actions with managed identity for MDE operations. Each workflow identity that calls MDE must receive application roles on the WindowsDefenderATP service principal.
 
 Commercial values from the lab notes:
 
@@ -243,11 +242,19 @@ Commercial token audience: https://securitycenter.onmicrosoft.com/windowsatpserv
 Commercial API URL: https://api.securitycenter.microsoft.com
 ```
 
-Known roles used in previous MDE managed identity testing:
+Required app roles:
 
 ```text
-Machine.Read.All
-Machine.ReadWrite.All
+Set-CyberTriage:
+  Machine.ReadWrite.All
+
+CyberTriage-LiveResponse-Collection:
+  Machine.Read.All
+  Machine.ReadWrite.All
+  Machine.LiveResponse
+
+Check-CyberTriageQueue:
+  none
 ```
 
 The script looks up role IDs dynamically instead of hardcoding them.

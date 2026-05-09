@@ -67,14 +67,12 @@
     "OutputPath": "C:\\Windows\\Temp\\cttout.json.enc",
     "DestinationContainerName": "cybertriage-results",
     "OnlineThresholdMinutes": 30,
-    "azureBlobConnectionName": "[concat('azureblob-', variables('PlaybookName'))]",
-    "azureBlobConnectionId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'azureblob')]",
     "office365ConnectionName": "[concat('office365-', variables('PlaybookName'))]",
     "office365ConnectionId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'office365')]",
-    "wdatpConnectionName": "[concat('wdatp-', variables('PlaybookName'), '-cards')]",
-    "wdatpConnectionId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'wdatp')]",
     "sentinelConnectionName": "[concat('azuresentinel-', variables('PlaybookName'))]",
-    "sentinelConnectionId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'azuresentinel')]"
+    "sentinelConnectionId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'azuresentinel')]",
+    "defenderApiBaseUri": "https://api.securitycenter.microsoft.com",
+    "defenderApiAudience": "https://securitycenter.onmicrosoft.com/windowsatpservice"
   },
   "resources": [
     {
@@ -87,33 +85,6 @@
         "displayName": "[variables('sentinelConnectionName')]",
         "api": { "id": "[variables('sentinelConnectionId')]" },
         "parameterValueType": "Alternative"
-      }
-    },
-    {
-      "type": "Microsoft.Web/connections",
-      "apiVersion": "2016-06-01",
-      "name": "[variables('wdatpConnectionName')]",
-      "location": "[parameters('location')]",
-      "kind": "V1",
-      "properties": {
-        "displayName": "[variables('wdatpConnectionName')]",
-        "api": { "id": "[variables('wdatpConnectionId')]" },
-        "parameterValueType": "Alternative"
-      }
-    },
-    {
-      "type": "Microsoft.Web/connections",
-      "apiVersion": "2016-06-01",
-      "name": "[variables('azureBlobConnectionName')]",
-      "location": "[parameters('location')]",
-      "kind": "V1",
-      "properties": {
-        "displayName": "[variables('azureBlobConnectionName')]",
-        "api": { "id": "[variables('azureBlobConnectionId')]" },
-        "parameterValueSet": {
-          "name": "managedIdentityAuth",
-          "values": {}
-        }
       }
     },
     {
@@ -141,8 +112,6 @@
       "identity": { "type": "SystemAssigned" },
       "dependsOn": [
         "[resourceId('Microsoft.Web/connections', variables('sentinelConnectionName'))]",
-        "[resourceId('Microsoft.Web/connections', variables('wdatpConnectionName'))]",
-        "[resourceId('Microsoft.Web/connections', variables('azureBlobConnectionName'))]",
         "[resourceId('Microsoft.Web/connections', variables('office365ConnectionName'))]"
       ],
       "properties": {
@@ -212,12 +181,12 @@
               "inputs": { "variables": [{ "name": "DeviceId", "type": "string", "value": "" }] }
             },
             "Query_Tagged_Devices": {
-              "type": "ApiConnection",
+              "type": "Http",
               "runAfter": { "Init_DeviceId": ["Succeeded"] },
               "inputs": {
-                "host": { "connection": { "name": "@parameters('$connections')['wdatp']['connectionId']" } },
-                "method": "get",
-                "path": "/api/machines",
+                "method": "GET",
+                "uri": "@{concat('https://api.securitycenter.microsoft.com/api/machines')}",
+                "authentication": { "type": "ManagedServiceIdentity", "audience": "https://securitycenter.onmicrosoft.com/windowsatpservice" },
                 "queries": {
                   "$filter": "@{if(empty(triggerBody()?['MdatpDeviceId']), concat('machineTags/any(t:t eq ''', variables('TagName'), ''') and onboardingStatus eq ''Onboarded'''), concat('id eq ''', triggerBody()?['MdatpDeviceId'], ''' and onboardingStatus eq ''Onboarded'''))}",
                   "$select": "id,computerDnsName,osPlatform,healthStatus,lastSeen,machineTags"
@@ -265,12 +234,12 @@
                       "inputs": { "name": "DeviceId", "value": "@{items('For_Each_Tagged_Device')?['id']}" }
                     },
                     "Query_Active_Live_Response_Actions": {
-                      "type": "ApiConnection",
+                      "type": "Http",
                       "runAfter": { "Set_DeviceId": ["Succeeded"] },
                       "inputs": {
-                        "host": { "connection": { "name": "@parameters('$connections')['wdatp']['connectionId']" } },
-                        "method": "get",
-                        "path": "/api/machineactions",
+                        "method": "GET",
+                        "uri": "@{concat('https://api.securitycenter.microsoft.com/api/machineactions')}",
+                        "authentication": { "type": "ManagedServiceIdentity", "audience": "https://securitycenter.onmicrosoft.com/windowsatpservice" },
                         "queries": {
                           "$filter": "@{concat('machineId eq ''', variables('DeviceId'), ''' and type eq ''LiveResponse'' and (status eq ''Pending'' or status eq ''InProgress'')')}",
                           "$top": "1"
@@ -377,12 +346,13 @@
                             }
                           },
                           "Run_LR_Collection": {
-                            "type": "ApiConnection",
+                            "type": "Http",
                             "runAfter": { "Generate_CyberTriage_Sas": ["Succeeded"] },
                             "inputs": {
-                              "host": { "connection": { "name": "@parameters('$connections')['wdatp']['connectionId']" } },
-                              "method": "post",
-                              "path": "/api/machines/@{encodeURIComponent(variables('DeviceId'))}/runliveresponse",
+                              "method": "POST",
+                              "uri": "@{concat('https://api.securitycenter.microsoft.com/api/machines/', encodeURIComponent(variables('DeviceId')), '/runliveresponse')}",
+                              "headers": { "Content-Type": "application/json" },
+                              "authentication": { "type": "ManagedServiceIdentity", "audience": "https://securitycenter.onmicrosoft.com/windowsatpservice" },
                               "body": {
                                 "Commands": [
                                   { "type": "PutFile",   "params": [{ "key": "FileName",   "value": "@{parameters('CyberTriageExeName')}" }] },
@@ -400,12 +370,13 @@
                             }
                           },
                           "Remove_Tag": {
-                            "type": "ApiConnection",
+                            "type": "Http",
                             "runAfter": { "Run_LR_Collection": ["Succeeded"] },
                             "inputs": {
-                              "host": { "connection": { "name": "@parameters('$connections')['wdatp']['connectionId']" } },
-                              "method": "post",
-                              "path": "/api/machines/@{encodeURIComponent(items('For_Each_Tagged_Device')?['id'])}/tags",
+                              "method": "POST",
+                              "uri": "@{concat('https://api.securitycenter.microsoft.com/api/machines/', encodeURIComponent(items('For_Each_Tagged_Device')?['id']), '/tags')}",
+                              "headers": { "Content-Type": "application/json" },
+                              "authentication": { "type": "ManagedServiceIdentity", "audience": "https://securitycenter.onmicrosoft.com/windowsatpservice" },
                               "body": { "Value": "@{variables('TagName')}", "Action": "Remove" }
                             }
                           },
@@ -486,26 +457,10 @@
         "parameters": {
           "$connections": {
             "value": {
-              "azureblob": {
-                "connectionId": "[resourceId('Microsoft.Web/connections', variables('azureBlobConnectionName'))]",
-                "connectionName": "[variables('azureBlobConnectionName')]",
-                "id": "[variables('azureBlobConnectionId')]",
-                "connectionProperties": {
-                  "authentication": { "type": "ManagedServiceIdentity" }
-                }
-              },
               "office365": {
                 "connectionId": "[resourceId('Microsoft.Web/connections', variables('office365ConnectionName'))]",
                 "connectionName": "[variables('office365ConnectionName')]",
                 "id": "[variables('office365ConnectionId')]"
-              },
-              "wdatp": {
-                "connectionId": "[resourceId('Microsoft.Web/connections', variables('wdatpConnectionName'))]",
-                "connectionName": "[variables('wdatpConnectionName')]",
-                "id": "[variables('wdatpConnectionId')]",
-                "connectionProperties": {
-                  "authentication": { "type": "ManagedServiceIdentity" }
-                }
               },
               "azuresentinel": {
                 "connectionId": "[resourceId('Microsoft.Web/connections', variables('sentinelConnectionName'))]",
@@ -524,7 +479,15 @@
   "outputs": {
     "logicAppName":      { "type": "string", "value": "[variables('PlaybookName')]" },
     "logicAppResourceId":{ "type": "string", "value": "[resourceId('Microsoft.Logic/workflows', variables('PlaybookName'))]" },
-    "principalId":       { "type": "string", "value": "[reference(resourceId('Microsoft.Logic/workflows', variables('PlaybookName')), '2019-05-01', 'full').identity.principalId]" }
+    "principalId":       { "type": "string", "value": "[reference(resourceId('Microsoft.Logic/workflows', variables('PlaybookName')), '2019-05-01', 'full').identity.principalId]" },
+    "requiredDefenderApiPermissions": {
+      "type": "array",
+      "value": [
+        "Machine.Read.All",
+        "Machine.ReadWrite.All",
+        "Machine.LiveResponse"
+      ]
+    }
   }
 }
 
