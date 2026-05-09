@@ -4,6 +4,10 @@ Use this page when the person deploying the ARM templates cannot assign managed 
 
 For the full click-by-click and command-by-command permission setup, see [setting-permissions-step-by-step.md](setting-permissions-step-by-step.md).
 
+Simplest option: have an account with `Owner` on the subscription run the full commercial deployment. In that case, the ARM template assigns the Azure RBAC roles automatically.
+
+Use this handoff only when the customer will not let the deployment operator use `Owner`, or when role assignment is handled by a separate admin team.
+
 The deployment can be done in two passes:
 
 1. Deployment operator clicks the ARM deployment buttons.

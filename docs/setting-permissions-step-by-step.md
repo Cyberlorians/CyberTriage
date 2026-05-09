@@ -4,6 +4,8 @@ Use this page after the ARM templates create the Function App and Logic Apps.
 
 This page answers the practical question: where do I click, and what role do I assign?
 
+Recommended simple path: run the full commercial deployment with an account that is `Owner` on the subscription. Then the ARM template assigns the Azure RBAC permissions automatically. You use this page to understand what was assigned, to verify it, or to set permissions manually if the customer did not allow `Owner`.
+
 ## Before You Start
 
 You need these names:
@@ -34,6 +36,7 @@ CyberTriage-LiveResponse-Collection
 The full commercial deployment creates these resources:
 
 ```text
+Evidence storage account and cybertriage-results container
 SAS broker Function App: the name entered during deployment
 Collection Logic App: CyberTriage-LiveResponse-Collection
 Incident tagging Logic App: Set-CyberTriage
@@ -41,7 +44,15 @@ Queue checker Logic App: Check-CyberTriageQueue
 Watchlist alias to create: ForensicCollectQueue
 ```
 
-The person setting Azure RBAC permissions needs one of these roles at the target scopes:
+The person running the full deployment should be:
+
+```text
+Owner on the subscription
+```
+
+That is the simplest path because the template can create resources and create role assignments in one run.
+
+If permissions are set after deployment, the person setting Azure RBAC permissions needs one of these roles at the target scopes:
 
 ```text
 Owner
@@ -56,9 +67,9 @@ Function host storage account
 Sentinel / Log Analytics workspace
 ```
 
-## Fast Method: Run The Permission Script
+## Fast Method If Owner Was Not Used: Run The Permission Script
 
-From the repo root, run:
+If the full deployment was not run by an `Owner`, or if role assignment failed, run this from the repo root:
 
 ```powershell
 .\scripts\Grant-CyberTriagePermissions.ps1 `
@@ -91,7 +102,7 @@ That script sets these Azure RBAC permissions:
 
 ## Manual Method: Azure Portal Step By Step
 
-Use this if the customer does not want to run a script.
+Use this if the customer does not want to run a script or if the full Owner deployment was not used.
 
 ### Set Permissions After Deployment Of The SAS Broker Function App
 

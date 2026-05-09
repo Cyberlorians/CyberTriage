@@ -81,13 +81,13 @@ You need these pieces before the flow can work:
 
 1. A Microsoft Sentinel workspace.
 2. Microsoft Defender for Endpoint with devices onboarded.
-3. Permission to create Logic Apps, API connections, a Function App, and Storage Accounts.
-4. A permission admin who can grant managed identity permissions, if the deployment operator cannot assign Azure RBAC roles.
+3. An account that is `Owner` on the Azure subscription for the easiest full deployment. This lets the ARM template create resources and assign managed identity permissions automatically.
+4. A permission admin who can grant managed identity permissions if the deployment operator is not allowed to use `Owner`.
 5. The Cyber Triage collector binary from the vendor.
 6. The `Run-CyberTriage.ps1` wrapper uploaded to the MDE Live Response Library.
-7. A storage account and container for encrypted Cyber Triage artifacts.
-8. A SAS broker Function that can create user-delegation SAS URLs.
-9. The three Logic Apps in this repo.
+7. A storage account and container for encrypted Cyber Triage artifacts. The full deployment can create this for you.
+8. A SAS broker Function that can create user-delegation SAS URLs. The full deployment creates this for you.
+9. The three Logic Apps in this repo. The full deployment creates these for you.
 
 Permissions are split into three documents:
 
@@ -120,22 +120,17 @@ flowchart TD
 
 Deploy in this order:
 
-1. Create evidence storage.
-2. Create the `cybertriage-results` container.
-3. Keep `allowSharedKeyAccess=false`.
-4. Deploy the SAS broker Function.
-5. Give the broker managed identity storage roles.
-6. Test `/api/health` on the broker.
-7. Test SAS generation without printing the SAS URL.
-8. Upload `CyberTriageCollector.exe` to the MDE Live Response Library.
-9. Upload `Run-CyberTriage.ps1` to the MDE Live Response Library.
-10. Deploy `CyberTriage-LiveResponse-Collection`.
-11. Deploy `Set-CyberTriage`.
-12. Deploy `Check-CyberTriageQueue` disabled first.
-13. Create or verify the `ForensicCollectQueue` watchlist.
-14. Set managed identity and connector permissions with [docs/setting-permissions-step-by-step.md](docs/setting-permissions-step-by-step.md). If the deployer cannot do this, use [scripts/Grant-CyberTriagePermissions.ps1](scripts/Grant-CyberTriagePermissions.ps1) as the admin handoff.
-15. Run one controlled test against an active MDE device.
-16. Enable the queue checker recurrence.
+1. Run the full commercial deployment as `Owner` on the subscription.
+2. Let ARM create evidence storage, the `cybertriage-results` container, the SAS broker Function, and the three Logic Apps.
+3. Let ARM assign Azure RBAC roles to the managed identities.
+4. Authorize the Logic App API connections.
+5. Upload `CyberTriageCollector.exe` to the MDE Live Response Library.
+6. Upload `Run-CyberTriage.ps1` to the MDE Live Response Library.
+7. Create or verify the `ForensicCollectQueue` watchlist.
+8. Test `/api/health` on the broker.
+9. Test SAS generation without printing the SAS URL.
+10. Run one controlled test against an active MDE device.
+11. Enable the queue checker recurrence.
 
 See [docs/deployment-step-by-step.md](docs/deployment-step-by-step.md) for the long version.
 
@@ -155,6 +150,8 @@ Use the full deployment button first. It deploys the SAS broker Function App and
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcybertriage-full-deployment.json)
 
+Use an account that is `Owner` on the subscription for this deployment. The template creates the managed identities and assigns their Azure RBAC roles automatically.
+
 If Azure shows a quota error like `Dynamic VMs: 0`, pick a region where the subscription has Azure Functions Consumption quota or ask the Azure subscription owner to raise the quota. That is an Azure quota problem, not a CyberTriage template problem.
 
 The full deployment creates these names:
@@ -164,84 +161,37 @@ SAS broker Function App: the name you enter during deployment
 Collection Logic App: CyberTriage-LiveResponse-Collection
 Incident tagging Logic App: Set-CyberTriage
 Queue checker Logic App: Check-CyberTriageQueue
-Watchlist name to create: ForensicCollectQueue
+Evidence storage account: the name you enter, or the generated default
+Evidence container: cybertriage-results
+Watchlist name you create after deployment: ForensicCollectQueue
 ```
 
-After the button finishes, do the steps below. Do not skip them. The Azure resources can exist and still fail until these permissions and connections are set.
-
-### Set Permissions After Deployment Of The SAS Broker Function App
-
-The SAS broker Function App is the Function App name you entered during deployment.
-
-1. Open the Azure portal.
-2. Go to the SAS broker Function App.
-3. In the left menu, open `Settings` > `Identity`.
-4. Make sure `System assigned` is `On`.
-5. Copy the `Object (principal) ID`.
-6. Go to the evidence storage account where CyberTriage results will be uploaded.
-7. Open `Access control (IAM)`.
-8. Select `Add` > `Add role assignment`.
-9. Add `Storage Blob Delegator` to the SAS broker Function App managed identity.
-10. Add `Storage Blob Data Contributor` to the SAS broker Function App managed identity.
-11. Go to the Function host storage account from the deployment.
-12. Open `Access control (IAM)`.
-13. Add these roles to the same SAS broker Function App managed identity:
+The full deployment sets these Azure RBAC permissions for you:
 
 ```text
-Storage Blob Data Contributor
-Storage Queue Data Contributor
-Storage Table Data Contributor
+SAS broker Function App:
+  Storage Blob Delegator on the evidence storage account
+  Storage Blob Data Contributor on the evidence storage account
+  Storage Blob Data Contributor on the Function host storage account
+  Storage Queue Data Contributor on the Function host storage account
+  Storage Table Data Contributor on the Function host storage account
+
+CyberTriage-LiveResponse-Collection:
+  Microsoft Sentinel Contributor on the Sentinel workspace
+
+Set-CyberTriage:
+  Microsoft Sentinel Contributor on the Sentinel workspace
+
+Check-CyberTriageQueue:
+  Log Analytics Reader on the Sentinel workspace
+  Microsoft Sentinel Contributor on the Sentinel workspace
 ```
 
-### Set Permissions After Deployment Of `CyberTriage-LiveResponse-Collection`
-
-This is the collection Logic App. It starts MDE Live Response and cleans up the queue row.
-
-1. Open the Azure portal.
-2. Go to `Logic Apps`.
-3. Open `CyberTriage-LiveResponse-Collection`.
-4. In the left menu, open `Settings` > `Identity`.
-5. Make sure `System assigned` is `On`.
-6. Copy the `Object (principal) ID`.
-7. Go to the Sentinel workspace's Log Analytics workspace resource.
-8. Open `Access control (IAM)`.
-9. Select `Add` > `Add role assignment`.
-10. Add `Microsoft Sentinel Contributor` to the `CyberTriage-LiveResponse-Collection` managed identity.
-
-### Set Permissions After Deployment Of `Set-CyberTriage`
-
-This is the incident tagging Logic App. It tags the MDE device and writes a row to the watchlist queue.
-
-1. Open the Azure portal.
-2. Go to `Logic Apps`.
-3. Open `Set-CyberTriage`.
-4. In the left menu, open `Settings` > `Identity`.
-5. Make sure `System assigned` is `On`.
-6. Copy the `Object (principal) ID`.
-7. Go to the Sentinel workspace's Log Analytics workspace resource.
-8. Open `Access control (IAM)`.
-9. Select `Add` > `Add role assignment`.
-10. Add `Microsoft Sentinel Contributor` to the `Set-CyberTriage` managed identity.
-
-### Set Permissions After Deployment Of `Check-CyberTriageQueue`
-
-This is the queue checker Logic App. It checks the watchlist and only sends active MDE devices to collection.
-
-1. Open the Azure portal.
-2. Go to `Logic Apps`.
-3. Open `Check-CyberTriageQueue`.
-4. In the left menu, open `Settings` > `Identity`.
-5. Make sure `System assigned` is `On`.
-6. Copy the `Object (principal) ID`.
-7. Go to the Sentinel workspace's Log Analytics workspace resource.
-8. Open `Access control (IAM)`.
-9. Select `Add` > `Add role assignment`.
-10. Add `Log Analytics Reader` to the `Check-CyberTriageQueue` managed identity.
-11. Add `Microsoft Sentinel Contributor` to the `Check-CyberTriageQueue` managed identity.
+After the button finishes, do the steps below. Do not skip them. ARM can assign Azure RBAC roles, but it cannot sign in to every API connector for you.
 
 ### Copy And Paste Permission Script For The Azure Admin
 
-If the deployer cannot add those role assignments, give this command to the person who has `Owner` or `User Access Administrator` on the target resources:
+If the customer will not let the deployer use `Owner`, deploy the resources first, then give this command to the person who has `Owner` or `User Access Administrator` on the target resources:
 
 ```powershell
 .\scripts\Grant-CyberTriagePermissions.ps1 `

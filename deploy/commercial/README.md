@@ -15,7 +15,9 @@ These templates are the commercial Azure starter templates copied from the valid
 
 ## Recommended One-Click Deployment
 
-Use this button for the normal customer install. It deploys the SAS broker Function App and these exact Logic App names:
+Use this button for the normal customer install. Run it with an account that is `Owner` on the subscription. That lets the template create resources and assign managed identity Azure RBAC roles automatically.
+
+It deploys the evidence storage account, SAS broker Function App, and these exact Logic App names:
 
 ```text
 CyberTriage-LiveResponse-Collection
@@ -27,7 +29,7 @@ Check-CyberTriageQueue
 
 The SAS broker Function uses an Azure Functions Consumption plan. If Azure reports `Dynamic VMs: 0`, choose a region with quota or request quota from the subscription owner.
 
-After deployment, set managed identity permissions and authorize API connections. The plain-language steps are in:
+After deployment, ARM has already assigned the Azure RBAC roles if the deployment account was `Owner`. You still authorize API connections and create the watchlist. The plain-language steps are in:
 
 ```text
 docs/setting-permissions-step-by-step.md

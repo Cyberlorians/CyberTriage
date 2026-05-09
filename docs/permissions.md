@@ -4,6 +4,8 @@ This page explains who needs access, what each managed identity needs, and what 
 
 If you are looking for the actual steps to set the permissions, use [setting-permissions-step-by-step.md](setting-permissions-step-by-step.md). That page has Azure portal clicks and Azure CLI commands.
 
+The simplest commercial deployment model is: run the full ARM template as `Owner` on the subscription. The template creates the managed identities and assigns the Azure RBAC roles automatically. Connector authorization and MDE/Office 365 sign-in can still require human approval after deployment.
+
 There are two different jobs:
 
 1. Deploy the resources.
@@ -16,7 +18,7 @@ In small labs, one person may do both. In a customer tenant, these jobs are ofte
 If one person is doing everything for a pilot, the easiest path is:
 
 ```text
-Azure subscription or resource groups: Owner
+Azure subscription: Owner
 Sentinel workspace: Microsoft Sentinel Contributor
 MDE portal: permission to manage machine tags and Live Response library
 Entra ID: permission to authorize connector consent or assign app roles if using raw HTTP managed identity

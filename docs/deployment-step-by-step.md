@@ -40,24 +40,32 @@ GCCH has draft templates and endpoint notes, but must be verified in a GCCH tena
 
 For commercial Azure, start with the full deployment template unless you have a reason to deploy each piece separately.
 
+Use an account that is `Owner` on the subscription. That lets the template create the resources and assign Azure RBAC roles to the managed identities automatically.
+
 The full template deploys these resources into the resource group you choose:
 
 ```text
+Evidence storage account and cybertriage-results container
 SAS broker Function App: name entered during deployment
 CyberTriage-LiveResponse-Collection
 Set-CyberTriage
 Check-CyberTriageQueue
 Function host storage account
 API connections used by the Logic Apps
+Azure RBAC role assignments for the managed identities
 ```
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcybertriage-full-deployment.json)
 
 If Azure shows a quota error like `Dynamic VMs: 0`, pick a different region or ask the Azure subscription owner to raise Azure Functions Consumption quota. The SAS broker Function uses a Consumption hosting plan.
 
-After the ARM deployment finishes, you still set managed identity permissions, authorize API connections, create the watchlist, upload Live Response library files, and run one test.
+After the ARM deployment finishes, you still authorize API connections, create the watchlist, upload Live Response library files, and run one test.
 
 ## Step 2: Create The Evidence Storage Account
+
+If you used the full commercial deployment button, this storage account and the `cybertriage-results` container were already created.
+
+If you are deploying pieces separately, create the storage account yourself.
 
 This storage account receives encrypted Cyber Triage output.
 
@@ -112,6 +120,10 @@ src/SasBrokerNode
 The repo root contains `.deployment`, which tells Azure App Service source deployment to use that folder.
 
 ## Step 4: Grant The Broker Storage Roles
+
+If you used the full commercial deployment button with an `Owner` account, the template already assigned these roles.
+
+If you are deploying pieces separately, or if the customer did not allow `Owner`, assign the roles with [scripts/Grant-CyberTriagePermissions.ps1](../scripts/Grant-CyberTriagePermissions.ps1) or use the manual steps in [setting-permissions-step-by-step.md](setting-permissions-step-by-step.md).
 
 On the evidence storage account, grant the broker managed identity:
 
@@ -239,7 +251,14 @@ MdatpDeviceId
 
 ## Step 9: Deploy Collection Logic App
 
-Deploy:
+If you used the full commercial deployment button, this Logic App was already deployed as:
+
+```text
+CyberTriage-LiveResponse-Collection
+```
+
+If you are deploying pieces separately, deploy:
+
 
 ```text
 deploy/commercial/cybertriage-live-response-collection.json
@@ -257,7 +276,14 @@ This is secure. Do not print it in logs or commit it.
 
 ## Step 10: Deploy Set-CyberTriage Logic App
 
-Deploy:
+If you used the full commercial deployment button, this Logic App was already deployed as:
+
+```text
+Set-CyberTriage
+```
+
+If you are deploying pieces separately, deploy:
+
 
 ```text
 deploy/commercial/set-cybertriage.json
@@ -273,7 +299,14 @@ ForensicCollect
 
 ## Step 11: Deploy Queue Checker Logic App
 
-Deploy:
+If you used the full commercial deployment button, this Logic App was already deployed as:
+
+```text
+Check-CyberTriageQueue
+```
+
+If you are deploying pieces separately, deploy:
+
 
 ```text
 deploy/commercial/check-cybertriage-queue.json
@@ -309,11 +342,13 @@ azureblob
 
 If a connection is not authorized, the Logic App can deploy but fail at runtime.
 
-## Step 13: Set Permissions
+## Step 13: Verify Permissions
 
 Follow [setting-permissions-step-by-step.md](setting-permissions-step-by-step.md).
 
-That page shows both ways to set the permissions:
+If you used the full commercial deployment button with an `Owner` account, ARM already assigned the Azure RBAC roles. Use this step to verify the roles are present.
+
+If `Owner` was not allowed, that page also shows both ways to set the permissions after deployment:
 
 ```text
 Azure portal click-by-click
@@ -322,9 +357,9 @@ Azure CLI commands
 
 Use [permissions.md](permissions.md) if you need the explanation of why each role is needed.
 
-Do not skip this step.
+Do not skip verification.
 
-The most common failure is a workflow that exists but cannot query logs, update watchlists, call MDE, or create SAS because the permissions were not set after deployment.
+The most common failure is a workflow that exists but cannot query logs, update watchlists, call MDE, or create SAS because the permissions were missing or the API connections were not authorized.
 
 If the person doing the deployment cannot assign Azure RBAC roles, stop here and hand the admin this page:
 
