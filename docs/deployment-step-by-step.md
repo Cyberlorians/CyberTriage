@@ -53,6 +53,8 @@ API connections used by the Logic Apps
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcybertriage-full-deployment.json)
 
+If Azure shows a quota error like `Dynamic VMs: 0`, pick a different region or ask the Azure subscription owner to raise Azure Functions Consumption quota. The SAS broker Function uses a Consumption hosting plan.
+
 After the ARM deployment finishes, you still set managed identity permissions, authorize API connections, create the watchlist, upload Live Response library files, and run one test.
 
 ## Step 2: Create The Evidence Storage Account

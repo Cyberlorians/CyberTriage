@@ -25,6 +25,8 @@ Check-CyberTriageQueue
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcybertriage-full-deployment.json)
 
+The SAS broker Function uses an Azure Functions Consumption plan. If Azure reports `Dynamic VMs: 0`, choose a region with quota or request quota from the subscription owner.
+
 After deployment, set managed identity permissions and authorize API connections. The plain-language steps are in:
 
 ```text
