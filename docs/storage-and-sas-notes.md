@@ -134,15 +134,20 @@ Storage Blob Data Contributor
 
 ## Function Host Storage Roles
 
-The Function app also has its own host storage account. This is separate from the evidence storage account.
+The Function app also has its own host storage account. This is separate from the evidence storage account and separate from the `ForensicCollectQueue` Sentinel watchlist.
 
-For a Flex Consumption Function using managed identity host storage, the Function managed identity needs access to its host storage. The lab used:
+For a Function using managed identity host storage with shared keys disabled, the Function managed identity needs access to its host storage. The full commercial template grants this baseline set:
 
 ```text
 Storage Blob Data Contributor
-Storage Blob Data Owner
 Storage Queue Data Contributor
 Storage Table Data Contributor
+```
+
+The queue/table permissions above are for Azure Functions runtime storage behavior. They are not for the CyberTriage queue. In the lab, these broader troubleshooting roles were also used while proving managed identity host storage:
+
+```text
+Storage Blob Data Owner
 Storage Account Contributor
 ```
 

@@ -100,7 +100,6 @@
     "sasBrokerUrl": "[concat('https://', parameters('SasBrokerFunctionAppName'), '.azurewebsites.net/api/generate-cybertriagesas?brokerCode=', parameters('BrokerSharedSecret'))]",
     "evidenceStorageResourceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('DestinationStorageAccountName'))]",
     "functionHostStorageResourceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('FunctionHostStorageAccountName'))]",
-    "sentinelWorkspaceResourceId": "[concat('/subscriptions/', parameters('SentinelWorkspaceSubscriptionId'), '/resourceGroups/', parameters('SentinelWorkspaceResourceGroup'), '/providers/Microsoft.OperationalInsights/workspaces/', parameters('SentinelWorkspaceName'))]",
     "storageBlobDelegatorRoleId": "db58b8e5-c6ad-4a2a-8342-4190687cbf4a",
     "storageBlobDataContributorRoleId": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
     "logAnalyticsReaderRoleId": "73c42c96-874c-492b-b04d-ab87d138a893",
@@ -329,59 +328,114 @@
       }
     },
     {
-      "type": "Microsoft.Authorization/roleAssignments",
-      "apiVersion": "2022-04-01",
-      "name": "[guid(variables('sentinelWorkspaceResourceId'), variables('collectionPlaybookName'), variables('sentinelContributorRoleId'))]",
-      "scope": "[variables('sentinelWorkspaceResourceId')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "Deploy-Sentinel-Rbac",
+      "subscriptionId": "[parameters('SentinelWorkspaceSubscriptionId')]",
+      "resourceGroup": "[parameters('SentinelWorkspaceResourceGroup')]",
       "dependsOn": [
-        "Deploy-CyberTriage-LiveResponse-Collection"
-      ],
-      "properties": {
-        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('sentinelContributorRoleId'))]",
-        "principalId": "[reference(resourceId('Microsoft.Logic/workflows', variables('collectionPlaybookName')), '2019-05-01', 'full').identity.principalId]",
-        "principalType": "ServicePrincipal"
-      }
-    },
-    {
-      "type": "Microsoft.Authorization/roleAssignments",
-      "apiVersion": "2022-04-01",
-      "name": "[guid(variables('sentinelWorkspaceResourceId'), variables('setPlaybookName'), variables('sentinelContributorRoleId'))]",
-      "scope": "[variables('sentinelWorkspaceResourceId')]",
-      "dependsOn": [
-        "Deploy-Set-CyberTriage"
-      ],
-      "properties": {
-        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('sentinelContributorRoleId'))]",
-        "principalId": "[reference(resourceId('Microsoft.Logic/workflows', variables('setPlaybookName')), '2019-05-01', 'full').identity.principalId]",
-        "principalType": "ServicePrincipal"
-      }
-    },
-    {
-      "type": "Microsoft.Authorization/roleAssignments",
-      "apiVersion": "2022-04-01",
-      "name": "[guid(variables('sentinelWorkspaceResourceId'), variables('queuePlaybookName'), variables('logAnalyticsReaderRoleId'))]",
-      "scope": "[variables('sentinelWorkspaceResourceId')]",
-      "dependsOn": [
+        "Deploy-CyberTriage-LiveResponse-Collection",
+        "Deploy-Set-CyberTriage",
         "Deploy-Check-CyberTriageQueue"
       ],
       "properties": {
-        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('logAnalyticsReaderRoleId'))]",
-        "principalId": "[reference(resourceId('Microsoft.Logic/workflows', variables('queuePlaybookName')), '2019-05-01', 'full').identity.principalId]",
-        "principalType": "ServicePrincipal"
-      }
-    },
-    {
-      "type": "Microsoft.Authorization/roleAssignments",
-      "apiVersion": "2022-04-01",
-      "name": "[guid(variables('sentinelWorkspaceResourceId'), variables('queuePlaybookName'), variables('sentinelContributorRoleId'))]",
-      "scope": "[variables('sentinelWorkspaceResourceId')]",
-      "dependsOn": [
-        "Deploy-Check-CyberTriageQueue"
-      ],
-      "properties": {
-        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('sentinelContributorRoleId'))]",
-        "principalId": "[reference(resourceId('Microsoft.Logic/workflows', variables('queuePlaybookName')), '2019-05-01', 'full').identity.principalId]",
-        "principalType": "ServicePrincipal"
+        "mode": "Incremental",
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "parameters": {
+          "SentinelWorkspaceName": {
+            "value": "[parameters('SentinelWorkspaceName')]"
+          },
+          "CollectionPrincipalId": {
+            "value": "[reference(resourceId('Microsoft.Logic/workflows', variables('collectionPlaybookName')), '2019-05-01', 'full').identity.principalId]"
+          },
+          "SetPrincipalId": {
+            "value": "[reference(resourceId('Microsoft.Logic/workflows', variables('setPlaybookName')), '2019-05-01', 'full').identity.principalId]"
+          },
+          "QueuePrincipalId": {
+            "value": "[reference(resourceId('Microsoft.Logic/workflows', variables('queuePlaybookName')), '2019-05-01', 'full').identity.principalId]"
+          },
+          "SentinelContributorRoleId": {
+            "value": "[variables('sentinelContributorRoleId')]"
+          },
+          "LogAnalyticsReaderRoleId": {
+            "value": "[variables('logAnalyticsReaderRoleId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "SentinelWorkspaceName": {
+              "type": "string"
+            },
+            "CollectionPrincipalId": {
+              "type": "string"
+            },
+            "SetPrincipalId": {
+              "type": "string"
+            },
+            "QueuePrincipalId": {
+              "type": "string"
+            },
+            "SentinelContributorRoleId": {
+              "type": "string"
+            },
+            "LogAnalyticsReaderRoleId": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "sentinelWorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('SentinelWorkspaceName'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(variables('sentinelWorkspaceResourceId'), parameters('CollectionPrincipalId'), parameters('SentinelContributorRoleId'))]",
+              "scope": "[variables('sentinelWorkspaceResourceId')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('SentinelContributorRoleId'))]",
+                "principalId": "[parameters('CollectionPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(variables('sentinelWorkspaceResourceId'), parameters('SetPrincipalId'), parameters('SentinelContributorRoleId'))]",
+              "scope": "[variables('sentinelWorkspaceResourceId')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('SentinelContributorRoleId'))]",
+                "principalId": "[parameters('SetPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(variables('sentinelWorkspaceResourceId'), parameters('QueuePrincipalId'), parameters('LogAnalyticsReaderRoleId'))]",
+              "scope": "[variables('sentinelWorkspaceResourceId')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('LogAnalyticsReaderRoleId'))]",
+                "principalId": "[parameters('QueuePrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(variables('sentinelWorkspaceResourceId'), parameters('QueuePrincipalId'), parameters('SentinelContributorRoleId'))]",
+              "scope": "[variables('sentinelWorkspaceResourceId')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('SentinelContributorRoleId'))]",
+                "principalId": "[parameters('QueuePrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ]
+        }
       }
     }
   ],

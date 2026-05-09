@@ -90,11 +90,16 @@ Use that only if needed, because it grants broader host storage permissions.
 
 ## What The Script Grants
 
-The script grants the SAS broker Function identity:
+The script grants the SAS broker Function identity these evidence-storage roles:
 
 ```text
 Storage Blob Delegator on evidence storage
 Storage Blob Data Contributor on evidence storage
+```
+
+The script also grants the SAS broker Function identity these Function host-storage roles. These are for the Azure Functions runtime storage account, not for the `ForensicCollectQueue` Sentinel watchlist.
+
+```text
 Storage Blob Data Contributor on Function host storage
 Storage Queue Data Contributor on Function host storage
 Storage Table Data Contributor on Function host storage

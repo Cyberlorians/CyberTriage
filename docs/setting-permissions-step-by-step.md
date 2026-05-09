@@ -95,7 +95,7 @@ That script sets these Azure RBAC permissions:
 | Identity | Scope | Roles |
 |---|---|---|
 | SAS broker Function managed identity | Evidence storage account | Storage Blob Delegator; Storage Blob Data Contributor |
-| SAS broker Function managed identity | Function host storage account | Storage Blob Data Contributor; Storage Queue Data Contributor; Storage Table Data Contributor |
+| SAS broker Function managed identity | Function host storage account used by the Azure Functions runtime, not the Sentinel watchlist queue | Storage Blob Data Contributor; Storage Queue Data Contributor; Storage Table Data Contributor |
 | Set-CyberTriage managed identity | Sentinel workspace | Microsoft Sentinel Contributor |
 | Check-CyberTriageQueue managed identity | Sentinel workspace | Log Analytics Reader; Microsoft Sentinel Contributor |
 | CyberTriage-LiveResponse-Collection managed identity | Sentinel workspace | Microsoft Sentinel Contributor |
@@ -125,7 +125,7 @@ The SAS broker Function App creates the short-lived SAS URL. The Function App na
 
 When this is done, the SAS broker can request a user delegation key and create the short-lived SAS URL.
 
-Now set the Function host storage permissions:
+Now set the Function host storage permissions. This is the Azure Functions runtime storage account. It is separate from the evidence storage account, and the queue/table roles here are not for the `ForensicCollectQueue` Sentinel watchlist.
 
 1. Go to the Function host storage account from the deployment.
 2. Open `Access control (IAM)`.

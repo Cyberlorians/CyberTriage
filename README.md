@@ -152,7 +152,11 @@ Use the full deployment button first. It deploys the SAS broker Function App and
 
 Use an account that is `Owner` on the subscription for this deployment. The template creates the managed identities and assigns their Azure RBAC roles automatically.
 
+The template asks for the Sentinel workspace subscription, resource group, workspace name, and workspace customer ID. It uses those values to run a nested RBAC deployment named `Deploy-Sentinel-Rbac` at the Sentinel workspace resource group, then assigns the Logic App managed identities permissions on that workspace.
+
 If Azure shows a quota error like `Dynamic VMs: 0`, pick a region where the subscription has Azure Functions Consumption quota or ask the Azure subscription owner to raise the quota. That is an Azure quota problem, not a CyberTriage template problem.
+
+Testing status: the component deployment pieces and SAS flow have been validated, but the full one-button ARM deployment has not completed in this lab subscription yet because Azure validation stops on the Functions Consumption quota error above.
 
 The full deployment creates these names:
 
@@ -169,9 +173,13 @@ Watchlist name you create after deployment: ForensicCollectQueue
 The full deployment sets these Azure RBAC permissions for you:
 
 ```text
-SAS broker Function App:
+SAS broker Function App, evidence storage:
   Storage Blob Delegator on the evidence storage account
   Storage Blob Data Contributor on the evidence storage account
+
+SAS broker Function App, Function host storage:
+  These roles are for the Azure Functions runtime storage account.
+  They are not for the Sentinel watchlist queue.
   Storage Blob Data Contributor on the Function host storage account
   Storage Queue Data Contributor on the Function host storage account
   Storage Table Data Contributor on the Function host storage account
@@ -209,9 +217,13 @@ If the customer will not let the deployer use `Owner`, deploy the resources firs
 That script sets these Azure RBAC permissions:
 
 ```text
-SAS broker Function App managed identity:
+SAS broker Function App managed identity, evidence storage:
   Storage Blob Delegator on the evidence storage account
   Storage Blob Data Contributor on the evidence storage account
+
+SAS broker Function App managed identity, Function host storage:
+  These roles are for the Azure Functions runtime storage account.
+  They are not for the Sentinel watchlist queue.
   Storage Blob Data Contributor on the Function host storage account
   Storage Queue Data Contributor on the Function host storage account
   Storage Table Data Contributor on the Function host storage account

@@ -132,13 +132,18 @@ Storage Blob Delegator
 Storage Blob Data Contributor
 ```
 
-On the Function host storage account, grant the Function managed identity the roles required by the hosting model. In the lab, the working set was:
+On the Function host storage account, grant the Function managed identity the roles required by the hosting model. This is Azure Functions runtime storage, not the Sentinel watchlist queue. The full commercial template grants the baseline set:
 
 ```text
 Storage Blob Data Contributor
-Storage Blob Data Owner
 Storage Queue Data Contributor
 Storage Table Data Contributor
+```
+
+In the lab, these broader troubleshooting roles were also used while proving managed identity host storage:
+
+```text
+Storage Blob Data Owner
 Storage Account Contributor
 ```
 

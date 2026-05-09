@@ -54,12 +54,21 @@ evidence storage account:
 - `Storage Blob Delegator`
 - `Storage Blob Data Contributor`
 
-For Flex Consumption in a no-shared-key tenant, assign the Function App managed
-identity host-storage data roles on the Function host storage account as well:
+For Azure Functions host storage in a no-shared-key tenant, assign the Function
+App managed identity host-storage data roles on the Function host storage
+account as well. These are Azure Functions runtime permissions, not
+CyberTriage evidence storage permissions and not Sentinel watchlist queue
+permissions. The full commercial template grants this baseline set:
 
-- `Storage Blob Data Owner`
+- `Storage Blob Data Contributor`
 - `Storage Queue Data Contributor`
 - `Storage Table Data Contributor`
+
+If the selected Function hosting model still cannot start with managed identity
+host storage, use these broader troubleshooting roles only while proving the
+runtime path:
+
+- `Storage Blob Data Owner`
 - `Storage Account Contributor`
 
 The Function host storage app setting should use managed identity settings such

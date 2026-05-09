@@ -137,7 +137,9 @@ It needs this access on the evidence storage account:
 | Storage Blob Delegator | Lets the broker request a user delegation key. Without this, user-delegation SAS generation fails. |
 | Storage Blob Data Contributor | Lets the broker work with the blob/container data plane needed for the upload SAS flow. |
 
-It also needs access to the Function host storage account. The baseline script grants:
+It also needs access to the Function host storage account. This is the storage account used internally by the Azure Functions runtime when host storage is configured for managed identity and shared keys are disabled. These queue/table roles are not for the `ForensicCollectQueue` Sentinel watchlist.
+
+The baseline script grants:
 
 ```text
 Storage Blob Data Contributor
