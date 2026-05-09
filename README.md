@@ -35,9 +35,13 @@ Important lesson from the lab:
 
 ```text
 CyberTriage/
+  .deployment
   README.md
   deploy/
     commercial/
+      cybertriage-full-deployment.json
+      full.sample.parameters.json
+      sas-broker-function.json
       cybertriage-live-response-collection.json
       check-cybertriage-queue.json
       set-cybertriage.json
@@ -65,6 +69,8 @@ CyberTriage/
     diagrams/
       architecture.mmd
       permissions.mmd
+    watchlists/
+      ForensicCollectQueue.csv
   packages/
     .gitkeep
 ```
@@ -145,13 +151,176 @@ The GCCH templates are intentionally marked as draft until the endpoint values a
 
 ## Deploy To Azure
 
+Use the full deployment button first. It deploys the SAS broker Function App and all three Logic Apps into the resource group you choose.
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcybertriage-full-deployment.json)
+
+The full deployment creates these names:
+
+```text
+SAS broker Function App: the name you enter during deployment
+Collection Logic App: CyberTriage-LiveResponse-Collection
+Incident tagging Logic App: Set-CyberTriage
+Queue checker Logic App: Check-CyberTriageQueue
+Watchlist name to create: ForensicCollectQueue
+```
+
+After the button finishes, do the steps below. Do not skip them. The Azure resources can exist and still fail until these permissions and connections are set.
+
+### Set Permissions After Deployment Of The SAS Broker Function App
+
+The SAS broker Function App is the Function App name you entered during deployment.
+
+1. Open the Azure portal.
+2. Go to the SAS broker Function App.
+3. In the left menu, open `Settings` > `Identity`.
+4. Make sure `System assigned` is `On`.
+5. Copy the `Object (principal) ID`.
+6. Go to the evidence storage account where CyberTriage results will be uploaded.
+7. Open `Access control (IAM)`.
+8. Select `Add` > `Add role assignment`.
+9. Add `Storage Blob Delegator` to the SAS broker Function App managed identity.
+10. Add `Storage Blob Data Contributor` to the SAS broker Function App managed identity.
+11. Go to the Function host storage account from the deployment.
+12. Open `Access control (IAM)`.
+13. Add these roles to the same SAS broker Function App managed identity:
+
+```text
+Storage Blob Data Contributor
+Storage Queue Data Contributor
+Storage Table Data Contributor
+```
+
+### Set Permissions After Deployment Of `CyberTriage-LiveResponse-Collection`
+
+This is the collection Logic App. It starts MDE Live Response and cleans up the queue row.
+
+1. Open the Azure portal.
+2. Go to `Logic Apps`.
+3. Open `CyberTriage-LiveResponse-Collection`.
+4. In the left menu, open `Settings` > `Identity`.
+5. Make sure `System assigned` is `On`.
+6. Copy the `Object (principal) ID`.
+7. Go to the Sentinel workspace's Log Analytics workspace resource.
+8. Open `Access control (IAM)`.
+9. Select `Add` > `Add role assignment`.
+10. Add `Microsoft Sentinel Contributor` to the `CyberTriage-LiveResponse-Collection` managed identity.
+
+### Set Permissions After Deployment Of `Set-CyberTriage`
+
+This is the incident tagging Logic App. It tags the MDE device and writes a row to the watchlist queue.
+
+1. Open the Azure portal.
+2. Go to `Logic Apps`.
+3. Open `Set-CyberTriage`.
+4. In the left menu, open `Settings` > `Identity`.
+5. Make sure `System assigned` is `On`.
+6. Copy the `Object (principal) ID`.
+7. Go to the Sentinel workspace's Log Analytics workspace resource.
+8. Open `Access control (IAM)`.
+9. Select `Add` > `Add role assignment`.
+10. Add `Microsoft Sentinel Contributor` to the `Set-CyberTriage` managed identity.
+
+### Set Permissions After Deployment Of `Check-CyberTriageQueue`
+
+This is the queue checker Logic App. It checks the watchlist and only sends active MDE devices to collection.
+
+1. Open the Azure portal.
+2. Go to `Logic Apps`.
+3. Open `Check-CyberTriageQueue`.
+4. In the left menu, open `Settings` > `Identity`.
+5. Make sure `System assigned` is `On`.
+6. Copy the `Object (principal) ID`.
+7. Go to the Sentinel workspace's Log Analytics workspace resource.
+8. Open `Access control (IAM)`.
+9. Select `Add` > `Add role assignment`.
+10. Add `Log Analytics Reader` to the `Check-CyberTriageQueue` managed identity.
+11. Add `Microsoft Sentinel Contributor` to the `Check-CyberTriageQueue` managed identity.
+
+### Copy And Paste Permission Script For The Azure Admin
+
+If the deployer cannot add those role assignments, give this command to the person who has `Owner` or `User Access Administrator` on the target resources:
+
+```powershell
+.\scripts\Grant-CyberTriagePermissions.ps1 `
+  -SubscriptionId '<subscription-guid>' `
+  -PlaybookResourceGroup '<playbook-resource-group>' `
+  -SentinelResourceGroup '<sentinel-resource-group>' `
+  -SentinelWorkspaceName '<sentinel-workspace-name>' `
+  -EvidenceStorageResourceGroup '<evidence-storage-resource-group>' `
+  -EvidenceStorageAccountName '<evidence-storage-account>' `
+  -FunctionHostStorageResourceGroup '<playbook-resource-group>' `
+  -FunctionHostStorageAccountName '<function-host-storage-account-from-deployment>' `
+  -SasBrokerFunctionAppName '<sas-broker-function-app-name-from-deployment>'
+```
+
+The Azure admin role is usually:
+
+```text
+Owner
+```
+
+or:
+
+```text
+User Access Administrator
+```
+
+Global Administrator or Application Administrator is only needed if the customer uses raw HTTP managed identity calls to MDE and wants to grant MDE application roles.
+
+### Authorize API Connections
+
+Azure RBAC permissions and API connection sign-in are different. Do both.
+
+Open the Azure portal and go to the API connection resources created by the deployment. Authorize anything that shows not connected.
+
+Important connections:
+
+```text
+wdatp-Set-CyberTriage
+wdatp-CyberTriage-LiveResponse-Collection-cards
+azuresentinel-Set-CyberTriage
+azuresentinel-CyberTriage-LiveResponse-Collection
+azuresentinel-Check-CyberTriageQueue
+azuremonitorlogs-Check-CyberTriageQueue
+office365-CyberTriage-LiveResponse-Collection
+```
+
+Use `office365-CyberTriage-LiveResponse-Collection` only if you want email notifications. If you do not want email, leave the connection alone or remove the email action from the Logic App.
+
+### Create The Watchlist
+
+Create a Microsoft Sentinel watchlist with this exact alias:
+
+```text
+ForensicCollectQueue
+```
+
+Use this CSV template:
+
+[assets/watchlists/ForensicCollectQueue.csv](assets/watchlists/ForensicCollectQueue.csv)
+
+When Sentinel asks for the search key, choose:
+
+```text
+MdatpDeviceId
+```
+
+The queue checker expects the watchlist alias and column names to match this template.
+
+For the longer setup guide, see [docs/setting-permissions-step-by-step.md](docs/setting-permissions-step-by-step.md).
+
+## Individual Commercial Buttons
+
+Use these only if you do not want the full deployment button.
+
 These buttons deploy the commercial Azure ARM templates from the `main` branch of `Cyberlorians/CyberTriage`.
 
 Deploy the collection playbook first:
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcybertriage-live-response-collection.json)
 
-Permissions after this button:
+Set permissions after deployment of `CyberTriage-LiveResponse-Collection`:
 
 ```text
 CyberTriage-LiveResponse-Collection managed identity:
@@ -166,7 +335,7 @@ Then deploy the incident tagging playbook:
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fset-cybertriage.json)
 
-Permissions after this button:
+Set permissions after deployment of `Set-CyberTriage`:
 
 ```text
 Set-CyberTriage managed identity:
@@ -181,7 +350,7 @@ Then deploy the queue checker:
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcheck-cybertriage-queue.json)
 
-Permissions after this button:
+Set permissions after deployment of `Check-CyberTriageQueue`:
 
 ```text
 Check-CyberTriageQueue managed identity:

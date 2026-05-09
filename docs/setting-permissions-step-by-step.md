@@ -31,6 +31,16 @@ Check-CyberTriageQueue
 CyberTriage-LiveResponse-Collection
 ```
 
+The full commercial deployment creates these resources:
+
+```text
+SAS broker Function App: the name entered during deployment
+Collection Logic App: CyberTriage-LiveResponse-Collection
+Incident tagging Logic App: Set-CyberTriage
+Queue checker Logic App: Check-CyberTriageQueue
+Watchlist alias to create: ForensicCollectQueue
+```
+
 The person setting Azure RBAC permissions needs one of these roles at the target scopes:
 
 ```text
@@ -79,40 +89,37 @@ That script sets these Azure RBAC permissions:
 | Check-CyberTriageQueue managed identity | Sentinel workspace | Log Analytics Reader; Microsoft Sentinel Contributor |
 | CyberTriage-LiveResponse-Collection managed identity | Sentinel workspace | Microsoft Sentinel Contributor |
 
-## Manual Method: Azure Portal
+## Manual Method: Azure Portal Step By Step
 
 Use this if the customer does not want to run a script.
 
-### Step 1: Find The SAS Broker Managed Identity
+### Set Permissions After Deployment Of The SAS Broker Function App
+
+The SAS broker Function App creates the short-lived SAS URL. The Function App name is the name entered during deployment.
 
 1. Open the Azure portal.
 2. Go to the SAS broker Function App.
-3. Open `Identity`.
+3. In the left menu, open `Settings` > `Identity`.
 4. Make sure `System assigned` is `On`.
 5. Copy the `Object (principal) ID`.
-
-That identity is the identity that needs storage permissions.
-
-### Step 2: Set Evidence Storage Permissions
-
-1. Go to the evidence storage account.
-2. Open `Access control (IAM)`.
-3. Select `Add`.
-4. Select `Add role assignment`.
-5. Search for `Storage Blob Delegator`.
-6. Select the role.
-7. For `Assign access to`, choose `Managed identity`.
-8. Select the SAS broker Function App managed identity.
-9. Review and assign.
-10. Repeat the same steps for `Storage Blob Data Contributor`.
+6. Go to the evidence storage account.
+7. Open `Access control (IAM)`.
+8. Select `Add` > `Add role assignment`.
+9. Search for `Storage Blob Delegator`.
+10. Select the role.
+11. For `Assign access to`, choose `Managed identity`.
+12. Select the SAS broker Function App managed identity.
+13. Select `Review + assign`.
+14. Repeat the same steps for `Storage Blob Data Contributor`.
 
 When this is done, the SAS broker can request a user delegation key and create the short-lived SAS URL.
 
-### Step 3: Set Function Host Storage Permissions
+Now set the Function host storage permissions:
 
-1. Go to the Function host storage account.
+1. Go to the Function host storage account from the deployment.
 2. Open `Access control (IAM)`.
-3. Add these role assignments to the SAS broker Function App managed identity:
+3. Select `Add` > `Add role assignment`.
+4. Add these roles to the same SAS broker Function App managed identity:
 
 ```text
 Storage Blob Data Contributor
@@ -129,51 +136,50 @@ Storage Account Contributor
 
 Use the broader roles only if the minimum host storage roles are not enough for the selected Function hosting model.
 
-### Step 4: Find The Logic App Managed Identities
+### Set Permissions After Deployment Of `CyberTriage-LiveResponse-Collection`
 
-For each Logic App:
+This Logic App starts MDE Live Response, removes the MDE tag, and deletes the watchlist row after handoff.
 
 1. Open the Logic App in the Azure portal.
-2. Open `Identity`.
-3. Make sure `System assigned` is `On`.
-4. Copy the `Object (principal) ID`.
+2. Open `CyberTriage-LiveResponse-Collection`.
+3. In the left menu, open `Settings` > `Identity`.
+4. Make sure `System assigned` is `On`.
+5. Copy the `Object (principal) ID`.
+6. Go to the Sentinel workspace's Log Analytics workspace resource.
+7. Open `Access control (IAM)`.
+8. Select `Add` > `Add role assignment`.
+9. Add `Microsoft Sentinel Contributor` to the `CyberTriage-LiveResponse-Collection` managed identity.
 
-Do this for:
+### Set Permissions After Deployment Of `Set-CyberTriage`
 
-```text
-Set-CyberTriage
-Check-CyberTriageQueue
-CyberTriage-LiveResponse-Collection
-```
+This Logic App tags the MDE device and writes the queue row to the Sentinel watchlist.
 
-### Step 5: Set Sentinel Workspace Permissions
+1. Open the Logic App in the Azure portal.
+2. Open `Set-CyberTriage`.
+3. In the left menu, open `Settings` > `Identity`.
+4. Make sure `System assigned` is `On`.
+5. Copy the `Object (principal) ID`.
+6. Go to the Sentinel workspace's Log Analytics workspace resource.
+7. Open `Access control (IAM)`.
+8. Select `Add` > `Add role assignment`.
+9. Add `Microsoft Sentinel Contributor` to the `Set-CyberTriage` managed identity.
 
-Go to the Sentinel workspace's Log Analytics workspace resource.
+### Set Permissions After Deployment Of `Check-CyberTriageQueue`
 
-Open:
+This Logic App reads the queue, checks MDE activity telemetry, and calls the collection Logic App only for active devices.
 
-```text
-Access control (IAM)
-```
+1. Open the Logic App in the Azure portal.
+2. Open `Check-CyberTriageQueue`.
+3. In the left menu, open `Settings` > `Identity`.
+4. Make sure `System assigned` is `On`.
+5. Copy the `Object (principal) ID`.
+6. Go to the Sentinel workspace's Log Analytics workspace resource.
+7. Open `Access control (IAM)`.
+8. Select `Add` > `Add role assignment`.
+9. Add `Log Analytics Reader` to the `Check-CyberTriageQueue` managed identity.
+10. Add `Microsoft Sentinel Contributor` to the `Check-CyberTriageQueue` managed identity.
 
-Add these role assignments:
-
-| Logic App Identity | Role |
-|---|---|
-| Set-CyberTriage | Microsoft Sentinel Contributor |
-| Check-CyberTriageQueue | Log Analytics Reader |
-| Check-CyberTriageQueue | Microsoft Sentinel Contributor |
-| CyberTriage-LiveResponse-Collection | Microsoft Sentinel Contributor |
-
-Why these are needed:
-
-```text
-Set-CyberTriage writes queue rows to the watchlist.
-Check-CyberTriageQueue queries Watchlist and DeviceInfo, then removes duplicate rows.
-CyberTriage-LiveResponse-Collection updates or deletes queue rows after handoff.
-```
-
-### Step 6: Authorize Logic App API Connections
+### Authorize Logic App API Connections
 
 Azure RBAC is not the same thing as connector authorization.
 
@@ -182,11 +188,13 @@ Open each Logic App and check its API connections.
 Connections that may need authorization:
 
 ```text
-azuresentinel
-wdatp
-office365
-azuremonitorlogs
-azureblob
+wdatp-Set-CyberTriage
+wdatp-CyberTriage-LiveResponse-Collection-cards
+azuresentinel-Set-CyberTriage
+azuresentinel-CyberTriage-LiveResponse-Collection
+azuresentinel-Check-CyberTriageQueue
+azuremonitorlogs-Check-CyberTriageQueue
+office365-CyberTriage-LiveResponse-Collection
 ```
 
 For each connection:
@@ -199,7 +207,31 @@ For each connection:
 
 The `wdatp` connection is the Microsoft Defender for Endpoint connection. If it is not authorized, MDE tagging or Live Response actions can fail even when Azure RBAC roles are correct.
 
-### Step 7: Set Optional Defender App Roles
+The `office365-CyberTriage-LiveResponse-Collection` connection is only for email notification. Connect it if you want email notifications. If not, leave it unused or remove the email action.
+
+### Create The Watchlist
+
+Create a Microsoft Sentinel watchlist with this exact alias:
+
+```text
+ForensicCollectQueue
+```
+
+Use this CSV file as the upload template:
+
+```text
+assets/watchlists/ForensicCollectQueue.csv
+```
+
+When Sentinel asks for the search key, choose:
+
+```text
+MdatpDeviceId
+```
+
+The queue checker expects that exact alias and those exact column names.
+
+### Set Optional Defender App Roles
 
 Do this only if the deployment uses raw HTTP actions with managed identity to call MDE.
 

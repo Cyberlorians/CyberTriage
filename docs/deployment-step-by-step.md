@@ -36,6 +36,25 @@ Commercial is the validated lab path in this repo.
 
 GCCH has draft templates and endpoint notes, but must be verified in a GCCH tenant before production use.
 
+## Step 1A: Use The Full Commercial Deployment Button
+
+For commercial Azure, start with the full deployment template unless you have a reason to deploy each piece separately.
+
+The full template deploys these resources into the resource group you choose:
+
+```text
+SAS broker Function App: name entered during deployment
+CyberTriage-LiveResponse-Collection
+Set-CyberTriage
+Check-CyberTriageQueue
+Function host storage account
+API connections used by the Logic Apps
+```
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcybertriage-full-deployment.json)
+
+After the ARM deployment finishes, you still set managed identity permissions, authorize API connections, create the watchlist, upload Live Response library files, and run one test.
+
 ## Step 2: Create The Evidence Storage Account
 
 This storage account receives encrypted Cyber Triage output.
@@ -55,6 +74,14 @@ The endpoint should not use storage account keys. It should use a short-lived SA
 
 ## Step 3: Create The SAS Broker Function
 
+If you used the full commercial deployment button, this Function App was already created.
+
+If you are deploying pieces separately, deploy:
+
+```text
+deploy/commercial/sas-broker-function.json
+```
+
 The SAS broker is a small Function App.
 
 It has two endpoints:
@@ -73,6 +100,14 @@ BROKER_SHARED_SECRET = <long random value>
 Do not commit this value to Git.
 
 The broker also needs managed identity enabled.
+
+The Function source comes from:
+
+```text
+src/SasBrokerNode
+```
+
+The repo root contains `.deployment`, which tells Azure App Service source deployment to use that folder.
 
 ## Step 4: Grant The Broker Storage Roles
 
@@ -187,6 +222,18 @@ BlockedActionId
 ```
 
 A blank `Status` means pending.
+
+Use this CSV template for manual upload:
+
+```text
+assets/watchlists/ForensicCollectQueue.csv
+```
+
+When Sentinel asks for the search key, choose:
+
+```text
+MdatpDeviceId
+```
 
 ## Step 9: Deploy Collection Logic App
 

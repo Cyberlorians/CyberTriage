@@ -1,0 +1,1 @@
+MdatpDeviceId,DeviceName,IncidentId,TagName,EnqueuedTime,Attempts,Status,RetryAfterUtc,LastAttemptUtc,LastError,BlockedActionId

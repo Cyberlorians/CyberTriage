@@ -9,6 +9,7 @@
 # Generated SAS URLs and temporary output
 *sas*.txt
 *sas*.json
+!deploy/commercial/sas-broker-function.json
 CyberTriageOutput/
 *.log
 *.tmp

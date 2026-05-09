@@ -1,0 +1,290 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "title": "CyberTriage Full Commercial Deployment",
+    "description": "Deploys the SAS broker Function App and all three CyberTriage Logic Apps into one resource group. Azure RBAC role assignment and connector authorization are still completed after deployment.",
+    "author": "Security Engineering"
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "SasBrokerFunctionAppName": {
+      "type": "string",
+      "defaultValue": "[concat('func-ct-sas-', uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "Name of the SAS broker Function App."
+      }
+    },
+    "FunctionHostStorageAccountName": {
+      "type": "string",
+      "defaultValue": "[toLower(concat('stctsas', uniqueString(resourceGroup().id)))]",
+      "metadata": {
+        "description": "Storage account used by the SAS broker Function host runtime."
+      }
+    },
+    "BrokerSharedSecret": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Long random secret for the SAS broker. Save it securely. It is not a storage account key."
+      }
+    },
+    "DestinationStorageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Existing evidence storage account where CyberTriage uploads encrypted artifacts."
+      }
+    },
+    "TargetDeviceTag": {
+      "type": "string",
+      "defaultValue": "ForensicCollect"
+    },
+    "NotificationEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "Email address for optional Office 365 notification."
+      }
+    },
+    "SentinelWorkspaceResourceGroup": {
+      "type": "string",
+      "defaultValue": "Sentinel"
+    },
+    "SentinelWorkspaceName": {
+      "type": "string",
+      "defaultValue": "<sentinel-workspace-name>"
+    },
+    "SentinelWorkspaceCustomerId": {
+      "type": "string",
+      "defaultValue": "<workspace-guid>"
+    },
+    "SentinelWorkspaceSubscriptionId": {
+      "type": "string",
+      "defaultValue": "[subscription().subscriptionId]"
+    },
+    "WatchlistAlias": {
+      "type": "string",
+      "defaultValue": "ForensicCollectQueue"
+    },
+    "SasExpiryMinutes": {
+      "type": "int",
+      "defaultValue": 1440
+    },
+    "SasPermissions": {
+      "type": "string",
+      "defaultValue": "racwdl"
+    },
+    "PollFrequencyMinutes": {
+      "type": "int",
+      "defaultValue": 60
+    },
+    "OnlineWindowMinutes": {
+      "type": "int",
+      "defaultValue": 60
+    },
+    "TemplateBaseUri": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/Cyberlorians/CyberTriage/main/deploy/commercial/",
+      "metadata": {
+        "description": "Base URI for linked commercial templates."
+      }
+    }
+  },
+  "variables": {
+    "collectionPlaybookName": "CyberTriage-LiveResponse-Collection",
+    "setPlaybookName": "Set-CyberTriage",
+    "queuePlaybookName": "Check-CyberTriageQueue",
+    "sasBrokerUrl": "[concat('https://', parameters('SasBrokerFunctionAppName'), '.azurewebsites.net/api/generate-cybertriagesas?brokerCode=', parameters('BrokerSharedSecret'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "Deploy-SasBrokerFunction",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(parameters('TemplateBaseUri'), 'sas-broker-function.json')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "SasBrokerFunctionAppName": {
+            "value": "[parameters('SasBrokerFunctionAppName')]"
+          },
+          "FunctionHostStorageAccountName": {
+            "value": "[parameters('FunctionHostStorageAccountName')]"
+          },
+          "BrokerSharedSecret": {
+            "value": "[parameters('BrokerSharedSecret')]"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "Deploy-CyberTriage-LiveResponse-Collection",
+      "dependsOn": [
+        "Deploy-SasBrokerFunction"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(parameters('TemplateBaseUri'), 'cybertriage-live-response-collection.json')]",
+          "contentVersion": "3.1.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "TargetDeviceTag": {
+            "value": "[parameters('TargetDeviceTag')]"
+          },
+          "DestinationStorageAccountName": {
+            "value": "[parameters('DestinationStorageAccountName')]"
+          },
+          "SasBrokerUrl": {
+            "value": "[variables('sasBrokerUrl')]"
+          },
+          "SasExpiryMinutes": {
+            "value": "[parameters('SasExpiryMinutes')]"
+          },
+          "SasPermissions": {
+            "value": "[parameters('SasPermissions')]"
+          },
+          "NotificationEmail": {
+            "value": "[parameters('NotificationEmail')]"
+          },
+          "SentinelWorkspaceResourceGroup": {
+            "value": "[parameters('SentinelWorkspaceResourceGroup')]"
+          },
+          "SentinelWorkspaceName": {
+            "value": "[parameters('SentinelWorkspaceName')]"
+          },
+          "SentinelWorkspaceCustomerId": {
+            "value": "[parameters('SentinelWorkspaceCustomerId')]"
+          },
+          "SentinelWorkspaceSubscriptionId": {
+            "value": "[parameters('SentinelWorkspaceSubscriptionId')]"
+          },
+          "WatchlistAlias": {
+            "value": "[parameters('WatchlistAlias')]"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "Deploy-Set-CyberTriage",
+      "dependsOn": [
+        "Deploy-CyberTriage-LiveResponse-Collection"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(parameters('TemplateBaseUri'), 'set-cybertriage.json')]",
+          "contentVersion": "3.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "TargetDeviceTag": {
+            "value": "[parameters('TargetDeviceTag')]"
+          },
+          "SentinelWorkspaceResourceGroup": {
+            "value": "[parameters('SentinelWorkspaceResourceGroup')]"
+          },
+          "SentinelWorkspaceName": {
+            "value": "[parameters('SentinelWorkspaceName')]"
+          },
+          "SentinelWorkspaceCustomerId": {
+            "value": "[parameters('SentinelWorkspaceCustomerId')]"
+          },
+          "SentinelWorkspaceSubscriptionId": {
+            "value": "[parameters('SentinelWorkspaceSubscriptionId')]"
+          },
+          "WatchlistAlias": {
+            "value": "[parameters('WatchlistAlias')]"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "Deploy-Check-CyberTriageQueue",
+      "dependsOn": [
+        "Deploy-CyberTriage-LiveResponse-Collection"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(parameters('TemplateBaseUri'), 'check-cybertriage-queue.json')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "SentinelWorkspaceResourceGroup": {
+            "value": "[parameters('SentinelWorkspaceResourceGroup')]"
+          },
+          "SentinelWorkspaceName": {
+            "value": "[parameters('SentinelWorkspaceName')]"
+          },
+          "SentinelWorkspaceCustomerId": {
+            "value": "[parameters('SentinelWorkspaceCustomerId')]"
+          },
+          "SentinelWorkspaceSubscriptionId": {
+            "value": "[parameters('SentinelWorkspaceSubscriptionId')]"
+          },
+          "WatchlistAlias": {
+            "value": "[parameters('WatchlistAlias')]"
+          },
+          "PollFrequencyMinutes": {
+            "value": "[parameters('PollFrequencyMinutes')]"
+          },
+          "OnlineWindowMinutes": {
+            "value": "[parameters('OnlineWindowMinutes')]"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "sasBrokerFunctionAppName": {
+      "type": "string",
+      "value": "[parameters('SasBrokerFunctionAppName')]"
+    },
+    "functionHostStorageAccountName": {
+      "type": "string",
+      "value": "[parameters('FunctionHostStorageAccountName')]"
+    },
+    "collectionLogicAppName": {
+      "type": "string",
+      "value": "[variables('collectionPlaybookName')]"
+    },
+    "setLogicAppName": {
+      "type": "string",
+      "value": "[variables('setPlaybookName')]"
+    },
+    "queueLogicAppName": {
+      "type": "string",
+      "value": "[variables('queuePlaybookName')]"
+    },
+    "watchlistAlias": {
+      "type": "string",
+      "value": "[parameters('WatchlistAlias')]"
+    },
+    "nextStep": {
+      "type": "string",
+      "value": "Set managed identity permissions and authorize API connections. See docs/setting-permissions-step-by-step.md."
+    }
+  }
+}

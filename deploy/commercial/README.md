@@ -6,11 +6,46 @@ These templates are the commercial Azure starter templates copied from the valid
 
 | File | Purpose |
 |---|---|
+| `cybertriage-full-deployment.json` | Recommended one-click deployment. Deploys the SAS broker Function App and all three Logic Apps. |
+| `sas-broker-function.json` | Deploys only the SAS broker Function App and Function host storage account. |
+| `full.sample.parameters.json` | Example parameter file for the full deployment. Do not commit real secrets. |
 | `set-cybertriage.json` | Incident-triggered playbook that tags MDE devices and enqueues them into the Sentinel watchlist. |
 | `check-cybertriage-queue.json` | Scheduled queue checker that selects active/recent MDE devices and triggers collection. |
 | `cybertriage-live-response-collection.json` | Collection playbook that generates SAS and submits MDE Live Response. |
 
-## Deploy Order
+## Recommended One-Click Deployment
+
+Use this button for the normal customer install. It deploys the SAS broker Function App and these exact Logic App names:
+
+```text
+CyberTriage-LiveResponse-Collection
+Set-CyberTriage
+Check-CyberTriageQueue
+```
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcybertriage-full-deployment.json)
+
+After deployment, set managed identity permissions and authorize API connections. The plain-language steps are in:
+
+```text
+docs/setting-permissions-step-by-step.md
+```
+
+Create the Sentinel watchlist with this exact alias:
+
+```text
+ForensicCollectQueue
+```
+
+Use this CSV template:
+
+```text
+assets/watchlists/ForensicCollectQueue.csv
+```
+
+## Separate Deploy Order
+
+Use this only if you do not want the full deployment template.
 
 1. `cybertriage-live-response-collection.json`
 2. `set-cybertriage.json`
@@ -35,6 +70,9 @@ Then deploy the queue checker:
 ## Parameters To Review
 
 ```text
+SasBrokerFunctionAppName
+FunctionHostStorageAccountName
+BrokerSharedSecret
 TargetDeviceTag
 DestinationStorageAccountName
 SasBrokerUrl
