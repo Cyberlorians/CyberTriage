@@ -51,6 +51,7 @@ CyberTriage/
     deployment-step-by-step.md
     operations-runbook.md
     permissions.md
+    setting-permissions-step-by-step.md
     storage-and-sas-notes.md
   src/
     LiveResponse/
@@ -82,9 +83,10 @@ You need these pieces before the flow can work:
 8. A SAS broker Function that can create user-delegation SAS URLs.
 9. The three Logic Apps in this repo.
 
-Permissions are split into two documents:
+Permissions are split into three documents:
 
 - [docs/permissions.md](docs/permissions.md) explains the human roles, managed identities, and per-Logic-App permissions.
+- [docs/setting-permissions-step-by-step.md](docs/setting-permissions-step-by-step.md) shows exactly how to set the permissions in the Azure portal or with Azure CLI.
 - [docs/admin-permission-handoff.md](docs/admin-permission-handoff.md) gives the exact handoff script for an Owner, User Access Administrator, Global Administrator, Cloud Application Administrator, or other admin who must grant permissions after deployment.
 
 ## High-Level Flow
@@ -125,7 +127,7 @@ Deploy in this order:
 11. Deploy `Set-CyberTriage`.
 12. Deploy `Check-CyberTriageQueue` disabled first.
 13. Create or verify the `ForensicCollectQueue` watchlist.
-14. Grant managed identity and connector permissions. If the deployer cannot do this, use [scripts/Grant-CyberTriagePermissions.ps1](scripts/Grant-CyberTriagePermissions.ps1) as the admin handoff.
+14. Set managed identity and connector permissions with [docs/setting-permissions-step-by-step.md](docs/setting-permissions-step-by-step.md). If the deployer cannot do this, use [scripts/Grant-CyberTriagePermissions.ps1](scripts/Grant-CyberTriagePermissions.ps1) as the admin handoff.
 15. Run one controlled test against an active MDE device.
 16. Enable the queue checker recurrence.
 
@@ -149,13 +151,77 @@ Deploy the collection playbook first:
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcybertriage-live-response-collection.json)
 
+Permissions after this button:
+
+```text
+CyberTriage-LiveResponse-Collection managed identity:
+  Microsoft Sentinel Contributor on the Sentinel workspace
+
+Connector authorization:
+  WDATP connection must be authorized for MDE Live Response and tag removal
+  Office 365 connection is optional for email notification
+```
+
 Then deploy the incident tagging playbook:
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fset-cybertriage.json)
 
+Permissions after this button:
+
+```text
+Set-CyberTriage managed identity:
+  Microsoft Sentinel Contributor on the Sentinel workspace
+
+Connector authorization:
+  WDATP connection must be authorized for MDE machine tagging
+  Sentinel connection must be authorized for incident and watchlist actions
+```
+
 Then deploy the queue checker:
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcheck-cybertriage-queue.json)
+
+Permissions after this button:
+
+```text
+Check-CyberTriageQueue managed identity:
+  Log Analytics Reader on the Sentinel workspace
+  Microsoft Sentinel Contributor on the Sentinel workspace
+
+Connector authorization:
+  Azure Monitor Logs connection must be authorized for Watchlist and DeviceInfo queries
+  Sentinel connection must be authorized for watchlist cleanup
+```
+
+After all three buttons and the SAS broker are deployed, give this copy/paste command to the Azure permission admin:
+
+```powershell
+.\scripts\Grant-CyberTriagePermissions.ps1 `
+  -SubscriptionId '<subscription-guid>' `
+  -PlaybookResourceGroup '<playbook-resource-group>' `
+  -SentinelResourceGroup '<sentinel-resource-group>' `
+  -SentinelWorkspaceName '<sentinel-workspace-name>' `
+  -EvidenceStorageResourceGroup '<storage-resource-group>' `
+  -EvidenceStorageAccountName '<evidence-storage-account>' `
+  -FunctionHostStorageResourceGroup '<function-host-storage-resource-group>' `
+  -FunctionHostStorageAccountName '<function-host-storage-account>' `
+  -SasBrokerFunctionAppName '<sas-broker-function-app>'
+```
+
+Who runs that command:
+
+```text
+Azure RBAC roles: Owner or User Access Administrator at the target scopes
+Optional MDE app-role grants: Global Administrator, Privileged Role Administrator, Cloud Application Administrator, or Application Administrator
+```
+
+Use the optional MDE app-role grant only for raw HTTP managed identity designs:
+
+```powershell
+.\scripts\Grant-CyberTriagePermissions.ps1 <same parameters> -GrantDefenderAppRoles
+```
+
+For the longer version, see [docs/setting-permissions-step-by-step.md](docs/setting-permissions-step-by-step.md).
 
 GCCH deployment buttons are documented in [deploy/gcch](deploy/gcch) as draft links until the Azure Government endpoints are verified.
 
@@ -197,8 +263,6 @@ cttout_<device>_<timestamp>.json.gz.enc.02
 ## Next Build Items
 
 - Convert duplicated ARM values into a single environment parameter model.
-- Add one-click Deploy to Azure buttons after this repo has a GitHub remote.
 - Add one-click Deploy to Azure Government buttons after GCCH endpoint verification.
-- Add scripts to grant all managed identity permissions repeatably.
 - Add screenshots or rendered diagrams for the final customer guide.
-- Add a validation script that checks storage, Function health, Logic App run status, MDE LR status, and blob upload status.
+- Add production screenshots for setting permissions and authorizing API connections.

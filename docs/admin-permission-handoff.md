@@ -2,6 +2,8 @@
 
 Use this page when the person deploying the ARM templates cannot assign managed identity permissions.
 
+For the full click-by-click and command-by-command permission setup, see [setting-permissions-step-by-step.md](setting-permissions-step-by-step.md).
+
 The deployment can be done in two passes:
 
 1. Deployment operator clicks the ARM deployment buttons.

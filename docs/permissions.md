@@ -2,6 +2,8 @@
 
 This page explains who needs access, what each managed identity needs, and what to do when the deployment operator is not allowed to grant permissions.
 
+If you are looking for the actual steps to set the permissions, use [setting-permissions-step-by-step.md](setting-permissions-step-by-step.md). That page has Azure portal clicks and Azure CLI commands.
+
 There are two different jobs:
 
 1. Deploy the resources.

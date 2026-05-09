@@ -260,13 +260,22 @@ azureblob
 
 If a connection is not authorized, the Logic App can deploy but fail at runtime.
 
-## Step 13: Grant Managed Identity Roles
+## Step 13: Set Permissions
 
-Follow [permissions.md](permissions.md).
+Follow [setting-permissions-step-by-step.md](setting-permissions-step-by-step.md).
+
+That page shows both ways to set the permissions:
+
+```text
+Azure portal click-by-click
+Azure CLI commands
+```
+
+Use [permissions.md](permissions.md) if you need the explanation of why each role is needed.
 
 Do not skip this step.
 
-The most common failure is a workflow that exists but cannot query logs, update watchlists, call MDE, or create SAS.
+The most common failure is a workflow that exists but cannot query logs, update watchlists, call MDE, or create SAS because the permissions were not set after deployment.
 
 If the person doing the deployment cannot assign Azure RBAC roles, stop here and hand the admin this page:
 
