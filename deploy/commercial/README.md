@@ -89,6 +89,7 @@ Then deploy the queue checker:
 SasBrokerFunctionAppName
 FunctionHostStorageAccountName
 BrokerSharedSecret
+SasBrokerPackageUri
 TargetDeviceTag
 DestinationStorageAccountName
 SasBrokerUrl

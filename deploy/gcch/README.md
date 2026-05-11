@@ -66,6 +66,7 @@ Use these values unless the customer has a reason to change them.
 | SasBrokerFunctionAppName | Globally unique Function App name, for example `func-ct-sas-<customer>` |
 | FunctionHostStorageAccountName | Globally unique lowercase storage account name, 3-24 characters |
 | BrokerSharedSecret | Long random secret. Save it securely. It is not a storage key. |
+| SasBrokerPackageUri | Keep the default package URL unless using a customer-hosted copy of `packages/SasBrokerNode.zip` |
 | DestinationStorageAccountName | Globally unique lowercase evidence storage account name |
 | TargetDeviceTag | Usually `ForensicCollect` |
 | NotificationEmail | Security mailbox for optional Office 365 notification |

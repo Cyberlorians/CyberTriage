@@ -19,8 +19,9 @@ CyberTriageOutput/
 *.zip
 *.7z
 *.msi
-packages/
+packages/*
 !packages/.gitkeep
+!packages/SasBrokerNode.zip
 
 # PowerShell and OS noise
 *.ps1xml

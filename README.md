@@ -77,6 +77,7 @@ CyberTriage/
     watchlists/
       ForensicCollectQueue.csv
   packages/
+    SasBrokerNode.zip
     .gitkeep
 ```
 

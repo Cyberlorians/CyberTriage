@@ -75,6 +75,10 @@ The Function host storage app setting should use managed identity settings such
 as `AzureWebJobsStorage__accountName` and `AzureWebJobsStorage__credential`, not
 an `AzureWebJobsStorage` connection string containing an account key.
 
+The ARM templates deploy this Function with `WEBSITE_RUN_FROM_PACKAGE` pointing
+at `packages/SasBrokerNode.zip`. The package zip root must contain `host.json`,
+`package.json`, and the function folders directly.
+
 ## Sovereign Cloud Settings
 
 The broker defaults to commercial Azure:

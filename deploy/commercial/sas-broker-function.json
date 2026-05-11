@@ -31,16 +31,12 @@
         "description": "Long random secret used by the collection Logic App to call the broker. This is not a storage key."
       }
     },
-    "RepositoryUrl": {
+    "PackageUri": {
       "type": "string",
-      "defaultValue": "https://github.com/Cyberlorians/CyberTriage",
+      "defaultValue": "https://raw.githubusercontent.com/Cyberlorians/CyberTriage/main/packages/SasBrokerNode.zip",
       "metadata": {
-        "description": "Repository that contains the Function source. The .deployment file points Azure to src/SasBrokerNode."
+        "description": "Public HTTPS URL for the zipped SAS broker Function package. The zip root must contain host.json."
       }
-    },
-    "RepositoryBranch": {
-      "type": "string",
-      "defaultValue": "main"
     },
     "StorageBlobDnsSuffix": {
       "type": "string",
@@ -149,32 +145,11 @@
               "value": "[parameters('StorageTokenResource')]"
             },
             {
-              "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
-              "value": "true"
-            },
-            {
-              "name": "ENABLE_ORYX_BUILD",
-              "value": "true"
+              "name": "WEBSITE_RUN_FROM_PACKAGE",
+              "value": "[parameters('PackageUri')]"
             }
           ]
         }
-      }
-    },
-    {
-      "type": "Microsoft.Web/sites/sourcecontrols",
-      "apiVersion": "2022-09-01",
-      "name": "[concat(parameters('SasBrokerFunctionAppName'), '/web')]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', parameters('SasBrokerFunctionAppName'))]",
-        "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('FunctionHostStorageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Storage/storageAccounts', parameters('FunctionHostStorageAccountName')), parameters('SasBrokerFunctionAppName'), variables('storageBlobDataContributorRoleId')))]",
-        "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('FunctionHostStorageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Storage/storageAccounts', parameters('FunctionHostStorageAccountName')), parameters('SasBrokerFunctionAppName'), variables('storageQueueDataContributorRoleId')))]",
-        "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('FunctionHostStorageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Storage/storageAccounts', parameters('FunctionHostStorageAccountName')), parameters('SasBrokerFunctionAppName'), variables('storageTableDataContributorRoleId')))]"
-      ],
-      "properties": {
-        "repoUrl": "[parameters('RepositoryUrl')]",
-        "branch": "[parameters('RepositoryBranch')]",
-        "isManualIntegration": true,
-        "deploymentRollbackEnabled": false
       }
     },
     {

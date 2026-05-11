@@ -31,6 +31,13 @@
         "description": "Long random secret for the SAS broker. Save it securely. It is not a storage account key."
       }
     },
+    "SasBrokerPackageUri": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/Cyberlorians/CyberTriage/main/packages/SasBrokerNode.zip",
+      "metadata": {
+        "description": "Public HTTPS URL for the zipped SAS broker Function package."
+      }
+    },
     "DestinationStorageAccountName": {
       "type": "string",
       "defaultValue": "[toLower(concat('stctresults', uniqueString(resourceGroup().id)))]",
@@ -201,6 +208,9 @@
           },
           "BrokerSharedSecret": {
             "value": "[parameters('BrokerSharedSecret')]"
+          },
+          "PackageUri": {
+            "value": "[parameters('SasBrokerPackageUri')]"
           },
           "StorageBlobDnsSuffix": {
             "value": "[parameters('StorageBlobDnsSuffix')]"
