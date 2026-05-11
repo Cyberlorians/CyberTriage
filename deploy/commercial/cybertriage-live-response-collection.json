@@ -57,6 +57,26 @@
     "WatchlistAlias": {
       "type": "string",
       "defaultValue": "ForensicCollectQueue"
+    },
+    "DefenderApiBaseUri": {
+      "type": "string",
+      "defaultValue": "https://api.securitycenter.microsoft.com",
+      "metadata": { "description": "Microsoft Defender for Endpoint API base URI." }
+    },
+    "DefenderApiAudience": {
+      "type": "string",
+      "defaultValue": "https://securitycenter.onmicrosoft.com/windowsatpservice",
+      "metadata": { "description": "Managed identity token audience/resource for Microsoft Defender for Endpoint API calls." }
+    },
+    "ArmBaseUri": {
+      "type": "string",
+      "defaultValue": "https://management.azure.com",
+      "metadata": { "description": "Azure Resource Manager base URI used by raw HTTP actions." }
+    },
+    "ArmAudience": {
+      "type": "string",
+      "defaultValue": "https://management.azure.com/",
+      "metadata": { "description": "Managed identity token audience/resource for Azure Resource Manager calls." }
     }
   },
   "variables": {
@@ -71,8 +91,10 @@
     "office365ConnectionId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'office365')]",
     "sentinelConnectionName": "[concat('azuresentinel-', variables('PlaybookName'))]",
     "sentinelConnectionId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'azuresentinel')]",
-    "defenderApiBaseUri": "https://api.securitycenter.microsoft.com",
-    "defenderApiAudience": "https://securitycenter.onmicrosoft.com/windowsatpservice"
+    "defenderApiBaseUri": "[parameters('DefenderApiBaseUri')]",
+    "defenderApiAudience": "[parameters('DefenderApiAudience')]",
+    "armBaseUri": "[parameters('ArmBaseUri')]",
+    "armAudience": "[parameters('ArmAudience')]"
   },
   "resources": [
     {
@@ -137,7 +159,11 @@
             "WorkspaceResourceGroup":     { "type": "String", "defaultValue": "[parameters('SentinelWorkspaceResourceGroup')]" },
             "WorkspaceName":              { "type": "String", "defaultValue": "[parameters('SentinelWorkspaceName')]" },
             "WorkspaceCustomerId":        { "type": "String", "defaultValue": "[parameters('SentinelWorkspaceCustomerId')]" },
-            "WatchlistAlias":             { "type": "String", "defaultValue": "[parameters('WatchlistAlias')]" }
+            "WatchlistAlias":             { "type": "String", "defaultValue": "[parameters('WatchlistAlias')]" },
+            "DefenderApiBaseUri":         { "type": "String", "defaultValue": "[variables('defenderApiBaseUri')]" },
+            "DefenderApiAudience":        { "type": "String", "defaultValue": "[variables('defenderApiAudience')]" },
+            "ArmBaseUri":                 { "type": "String", "defaultValue": "[variables('armBaseUri')]" },
+            "ArmAudience":                { "type": "String", "defaultValue": "[variables('armAudience')]" }
           },
           "triggers": {
             "manual": {
@@ -185,8 +211,8 @@
               "runAfter": { "Init_DeviceId": ["Succeeded"] },
               "inputs": {
                 "method": "GET",
-                "uri": "@{concat('https://api.securitycenter.microsoft.com/api/machines')}",
-                "authentication": { "type": "ManagedServiceIdentity", "audience": "https://securitycenter.onmicrosoft.com/windowsatpservice" },
+                "uri": "@{concat(parameters('DefenderApiBaseUri'), '/api/machines')}",
+                "authentication": { "type": "ManagedServiceIdentity", "audience": "@parameters('DefenderApiAudience')" },
                 "queries": {
                   "$filter": "@{if(empty(triggerBody()?['MdatpDeviceId']), concat('machineTags/any(t:t eq ''', variables('TagName'), ''') and onboardingStatus eq ''Onboarded'''), concat('id eq ''', triggerBody()?['MdatpDeviceId'], ''' and onboardingStatus eq ''Onboarded'''))}",
                   "$select": "id,computerDnsName,osPlatform,healthStatus,lastSeen,machineTags"
@@ -238,8 +264,8 @@
                       "runAfter": { "Set_DeviceId": ["Succeeded"] },
                       "inputs": {
                         "method": "GET",
-                        "uri": "@{concat('https://api.securitycenter.microsoft.com/api/machineactions')}",
-                        "authentication": { "type": "ManagedServiceIdentity", "audience": "https://securitycenter.onmicrosoft.com/windowsatpservice" },
+                        "uri": "@{concat(parameters('DefenderApiBaseUri'), '/api/machineactions')}",
+                        "authentication": { "type": "ManagedServiceIdentity", "audience": "@parameters('DefenderApiAudience')" },
                         "queries": {
                           "$filter": "@{concat('machineId eq ''', variables('DeviceId'), ''' and type eq ''LiveResponse'' and (status eq ''Pending'' or status eq ''InProgress'')')}",
                           "$top": "1"
@@ -286,9 +312,9 @@
                               "runAfter": {},
                               "inputs": {
                                 "method": "PUT",
-                                "uri": "@{concat('https://management.azure.com/subscriptions/', parameters('WorkspaceSubscriptionId'), '/resourceGroups/', parameters('WorkspaceResourceGroup'), '/providers/Microsoft.OperationalInsights/workspaces/', parameters('WorkspaceName'), '/providers/Microsoft.SecurityInsights/watchlists/', parameters('WatchlistAlias'), '/watchlistItems/', triggerBody()?['WatchlistItemId'], '?api-version=2023-11-01')}",
+                                "uri": "@{concat(parameters('ArmBaseUri'), '/subscriptions/', parameters('WorkspaceSubscriptionId'), '/resourceGroups/', parameters('WorkspaceResourceGroup'), '/providers/Microsoft.OperationalInsights/workspaces/', parameters('WorkspaceName'), '/providers/Microsoft.SecurityInsights/watchlists/', parameters('WatchlistAlias'), '/watchlistItems/', triggerBody()?['WatchlistItemId'], '?api-version=2023-11-01')}",
                                 "headers": { "Content-Type": "application/json" },
-                                "authentication": { "type": "ManagedServiceIdentity", "audience": "https://management.azure.com/" },
+                                "authentication": { "type": "ManagedServiceIdentity", "audience": "@parameters('ArmAudience')" },
                                 "body": {
                                   "properties": {
                                     "itemsKeyValue": {
@@ -350,9 +376,9 @@
                             "runAfter": { "Generate_CyberTriage_Sas": ["Succeeded"] },
                             "inputs": {
                               "method": "POST",
-                              "uri": "@{concat('https://api.securitycenter.microsoft.com/api/machines/', encodeURIComponent(variables('DeviceId')), '/runliveresponse')}",
+                              "uri": "@{concat(parameters('DefenderApiBaseUri'), '/api/machines/', encodeURIComponent(variables('DeviceId')), '/runliveresponse')}",
                               "headers": { "Content-Type": "application/json" },
-                              "authentication": { "type": "ManagedServiceIdentity", "audience": "https://securitycenter.onmicrosoft.com/windowsatpservice" },
+                              "authentication": { "type": "ManagedServiceIdentity", "audience": "@parameters('DefenderApiAudience')" },
                               "body": {
                                 "Commands": [
                                   { "type": "PutFile",   "params": [{ "key": "FileName",   "value": "@{parameters('CyberTriageExeName')}" }] },
@@ -374,9 +400,9 @@
                             "runAfter": { "Run_LR_Collection": ["Succeeded"] },
                             "inputs": {
                               "method": "POST",
-                              "uri": "@{concat('https://api.securitycenter.microsoft.com/api/machines/', encodeURIComponent(items('For_Each_Tagged_Device')?['id']), '/tags')}",
+                              "uri": "@{concat(parameters('DefenderApiBaseUri'), '/api/machines/', encodeURIComponent(items('For_Each_Tagged_Device')?['id']), '/tags')}",
                               "headers": { "Content-Type": "application/json" },
-                              "authentication": { "type": "ManagedServiceIdentity", "audience": "https://securitycenter.onmicrosoft.com/windowsatpservice" },
+                              "authentication": { "type": "ManagedServiceIdentity", "audience": "@parameters('DefenderApiAudience')" },
                               "body": { "Value": "@{variables('TagName')}", "Action": "Remove" }
                             }
                           },

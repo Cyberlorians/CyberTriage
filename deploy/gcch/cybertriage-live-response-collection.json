@@ -1,0 +1,81 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "title": "CyberTriage Live Response Collection - GCCH",
+    "description": "Azure Government wrapper for the CyberTriage Live Response collection playbook.",
+    "author": "Security Engineering"
+  },
+  "parameters": {
+    "location": { "type": "string", "defaultValue": "usgovvirginia" },
+    "TargetDeviceTag": { "type": "string", "defaultValue": "ForensicCollect" },
+    "DestinationStorageAccountName": { "type": "string" },
+    "SasBrokerUrl": { "type": "securestring" },
+    "SasExpiryMinutes": { "type": "int", "defaultValue": 1440 },
+    "SasPermissions": { "type": "string", "defaultValue": "racwdl" },
+    "NotificationEmail": { "type": "string" },
+    "SentinelWorkspaceResourceGroup": { "type": "string", "defaultValue": "Sentinel" },
+    "SentinelWorkspaceName": { "type": "string", "defaultValue": "<gcch-sentinel-workspace-name>" },
+    "SentinelWorkspaceCustomerId": { "type": "string", "defaultValue": "<workspace-guid>" },
+    "SentinelWorkspaceSubscriptionId": { "type": "string", "defaultValue": "[subscription().subscriptionId]" },
+    "WatchlistAlias": { "type": "string", "defaultValue": "ForensicCollectQueue" },
+    "DefenderApiBaseUri": {
+      "type": "string",
+      "defaultValue": "https://api-gov.securitycenter.microsoft.us"
+    },
+    "DefenderApiAudience": {
+      "type": "string",
+      "defaultValue": "https://api-gov.securitycenter.microsoft.us"
+    },
+    "ArmBaseUri": {
+      "type": "string",
+      "defaultValue": "https://management.usgovcloudapi.net"
+    },
+    "ArmAudience": {
+      "type": "string",
+      "defaultValue": "https://management.usgovcloudapi.net/"
+    },
+    "TemplateBaseUri": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/Cyberlorians/CyberTriage/main/deploy/commercial/"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "Deploy-Collection-GCCH",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(parameters('TemplateBaseUri'), 'cybertriage-live-response-collection.json')]",
+          "contentVersion": "3.1.0.0"
+        },
+        "parameters": {
+          "location": { "value": "[parameters('location')]" },
+          "TargetDeviceTag": { "value": "[parameters('TargetDeviceTag')]" },
+          "DestinationStorageAccountName": { "value": "[parameters('DestinationStorageAccountName')]" },
+          "SasBrokerUrl": { "value": "[parameters('SasBrokerUrl')]" },
+          "SasExpiryMinutes": { "value": "[parameters('SasExpiryMinutes')]" },
+          "SasPermissions": { "value": "[parameters('SasPermissions')]" },
+          "NotificationEmail": { "value": "[parameters('NotificationEmail')]" },
+          "SentinelWorkspaceResourceGroup": { "value": "[parameters('SentinelWorkspaceResourceGroup')]" },
+          "SentinelWorkspaceName": { "value": "[parameters('SentinelWorkspaceName')]" },
+          "SentinelWorkspaceCustomerId": { "value": "[parameters('SentinelWorkspaceCustomerId')]" },
+          "SentinelWorkspaceSubscriptionId": { "value": "[parameters('SentinelWorkspaceSubscriptionId')]" },
+          "WatchlistAlias": { "value": "[parameters('WatchlistAlias')]" },
+          "DefenderApiBaseUri": { "value": "[parameters('DefenderApiBaseUri')]" },
+          "DefenderApiAudience": { "value": "[parameters('DefenderApiAudience')]" },
+          "ArmBaseUri": { "value": "[parameters('ArmBaseUri')]" },
+          "ArmAudience": { "value": "[parameters('ArmAudience')]" }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "logicAppName": { "type": "string", "value": "[reference('Deploy-Collection-GCCH').outputs.logicAppName.value]" },
+    "logicAppResourceId": { "type": "string", "value": "[reference('Deploy-Collection-GCCH').outputs.logicAppResourceId.value]" },
+    "principalId": { "type": "string", "value": "[reference('Deploy-Collection-GCCH').outputs.principalId.value]" },
+    "requiredDefenderApiPermissions": { "type": "array", "value": "[reference('Deploy-Collection-GCCH').outputs.requiredDefenderApiPermissions.value]" }
+  }
+}

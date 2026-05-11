@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "title": "Check-CyberTriageQueue - GCCH",
+    "description": "Azure Government wrapper for the CyberTriage queue checker playbook.",
+    "author": "Security Engineering"
+  },
+  "parameters": {
+    "location": { "type": "string", "defaultValue": "usgovvirginia" },
+    "SentinelWorkspaceResourceGroup": { "type": "string", "defaultValue": "Sentinel" },
+    "SentinelWorkspaceName": { "type": "string", "defaultValue": "<gcch-sentinel-workspace-name>" },
+    "SentinelWorkspaceCustomerId": { "type": "string", "defaultValue": "<workspace-guid>" },
+    "SentinelWorkspaceSubscriptionId": { "type": "string", "defaultValue": "[subscription().subscriptionId]" },
+    "WatchlistAlias": { "type": "string", "defaultValue": "ForensicCollectQueue" },
+    "PollFrequencyMinutes": { "type": "int", "defaultValue": 60 },
+    "OnlineWindowMinutes": { "type": "int", "defaultValue": 60 },
+    "TemplateBaseUri": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/Cyberlorians/CyberTriage/main/deploy/commercial/"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "Deploy-Queue-GCCH",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(parameters('TemplateBaseUri'), 'check-cybertriage-queue.json')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": { "value": "[parameters('location')]" },
+          "SentinelWorkspaceResourceGroup": { "value": "[parameters('SentinelWorkspaceResourceGroup')]" },
+          "SentinelWorkspaceName": { "value": "[parameters('SentinelWorkspaceName')]" },
+          "SentinelWorkspaceCustomerId": { "value": "[parameters('SentinelWorkspaceCustomerId')]" },
+          "SentinelWorkspaceSubscriptionId": { "value": "[parameters('SentinelWorkspaceSubscriptionId')]" },
+          "WatchlistAlias": { "value": "[parameters('WatchlistAlias')]" },
+          "PollFrequencyMinutes": { "value": "[parameters('PollFrequencyMinutes')]" },
+          "OnlineWindowMinutes": { "value": "[parameters('OnlineWindowMinutes')]" }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "logicAppName": { "type": "string", "value": "[reference('Deploy-Queue-GCCH').outputs.logicAppName.value]" },
+    "logicAppResourceId": { "type": "string", "value": "[reference('Deploy-Queue-GCCH').outputs.logicAppResourceId.value]" },
+    "principalId": { "type": "string", "value": "[reference('Deploy-Queue-GCCH').outputs.principalId.value]" }
+  }
+}

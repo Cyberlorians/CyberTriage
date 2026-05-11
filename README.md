@@ -15,7 +15,7 @@ No storage account key is passed to the endpoint. Shared key access should stay 
 
 ## Current Status
 
-This repo is a packaging and documentation starter. It contains validated commercial templates copied from the working lab deployment and draft GCCH copies that still need endpoint hardening before customer use.
+This repo packages the commercial deployment and Azure Government / GCCH deployment wrappers. The commercial templates contain the shared workflow definitions; the GCCH templates pass Azure Government endpoint defaults into those shared templates.
 
 Validated in lab on May 8, 2026:
 
@@ -46,7 +46,12 @@ CyberTriage/
       check-cybertriage-queue.json
       set-cybertriage.json
     gcch/
-      *.gcch-draft.json
+      cybertriage-full-deployment.json
+      sas-broker-function.json
+      cybertriage-live-response-collection.json
+      check-cybertriage-queue.json
+      set-cybertriage.json
+      full.sample.parameters.json
       README.md
   docs/
     admin-permission-handoff.md
@@ -139,10 +144,10 @@ See [docs/deployment-step-by-step.md](docs/deployment-step-by-step.md) for the l
 Commercial Azure and GCCH are not just different regions. They can use different portals, authorities, service URLs, managed APIs, and application endpoints.
 
 - Commercial starter templates are in [deploy/commercial](deploy/commercial).
-- GCCH draft templates are in [deploy/gcch](deploy/gcch).
+- GCCH Azure Government wrappers are in [deploy/gcch](deploy/gcch).
 - Endpoint differences are tracked in [docs/commercial-vs-gcch.md](docs/commercial-vs-gcch.md).
 
-The GCCH templates are intentionally marked as draft until the endpoint values and connector behavior are verified in a GCCH tenant.
+GCCH verification performed on May 9, 2026 confirmed the Azure Government cloud endpoints, required managed API connectors in `usgovvirginia`, and the WindowsDefenderATP enterprise app with the required MDE app roles. End-to-end Live Response still requires an onboarded, active MDE device in the target tenant.
 
 ## Deploy To Azure
 
@@ -159,6 +164,23 @@ The template asks for the Sentinel workspace subscription, resource group, works
 If Azure shows a quota error like `Dynamic VMs: 0`, pick a region where the subscription has Azure Functions Consumption quota or ask the Azure subscription owner to raise the quota. That is an Azure quota problem, not a CyberTriage template problem.
 
 Testing status: the component deployment pieces and SAS flow have been validated, but the full one-button ARM deployment has not completed in this lab subscription yet because Azure validation stops on the Functions Consumption quota error above.
+
+## Deploy To Azure Government / GCCH
+
+Use this button only in Azure Government / GCCH from `https://portal.azure.us`.
+
+[![Deploy to Azure Government](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fgcch%2Fcybertriage-full-deployment.json)
+
+The GCCH button uses these defaults:
+
+```text
+ARM endpoint: https://management.usgovcloudapi.net
+MDE API endpoint for GCC High: https://api-gov.securitycenter.microsoft.us
+Storage blob DNS suffix: blob.core.usgovcloudapi.net
+Microsoft Graph endpoint used by the permission script: https://graph.microsoft.us/
+```
+
+After the button finishes, grant MDE app roles, check API connections, create or verify the `ForensicCollectQueue` watchlist, upload the Live Response files, test the broker, test one active MDE device, and then enable the queue checker. The full walk-through is in [deploy/gcch/README.md](deploy/gcch/README.md).
 
 The full deployment creates these names:
 

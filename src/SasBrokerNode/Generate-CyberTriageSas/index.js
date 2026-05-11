@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 
-const STORAGE_SCOPE = 'https://storage.azure.com/';
+const DEFAULT_STORAGE_TOKEN_RESOURCE = 'https://storage.azure.com/';
+const DEFAULT_STORAGE_BLOB_DNS_SUFFIX = 'blob.core.windows.net';
 const STORAGE_API_VERSION = '2020-12-06';
 const SAS_VERSION = '2020-12-06';
 const CANONICAL_PERMISSION_ORDER = 'racwdxltmeop';
@@ -35,8 +36,10 @@ module.exports = async function (context, req) {
 
     const signedStart = formatAzureTime(new Date(Date.now() - 15 * 60 * 1000));
     const signedExpiry = formatAzureTime(new Date(Date.now() + ttlMinutes * 60 * 1000));
-    const token = await getManagedIdentityToken(STORAGE_SCOPE);
-    const delegationKey = await getUserDelegationKey(storageAccountName, token, signedStart, signedExpiry);
+    const storageTokenResource = getStorageTokenResource();
+    const blobServiceHost = getBlobServiceHost(storageAccountName);
+    const token = await getManagedIdentityToken(storageTokenResource);
+    const delegationKey = await getUserDelegationKey(blobServiceHost, token, signedStart, signedExpiry);
     const sasQuery = createContainerUserDelegationSas({
       storageAccountName,
       containerName,
@@ -47,7 +50,7 @@ module.exports = async function (context, req) {
     });
 
     context.res = jsonResponse(200, {
-      sasUrl: `https://${storageAccountName}.blob.core.windows.net/${containerName}?${sasQuery}`,
+      sasUrl: `https://${blobServiceHost}/${containerName}?${sasQuery}`,
       expiresOnUtc: signedExpiry,
       storageAccountName,
       containerName,
@@ -105,6 +108,19 @@ function formatAzureTime(date) {
   return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
+function getStorageTokenResource() {
+  const resource = String(process.env.STORAGE_TOKEN_RESOURCE || DEFAULT_STORAGE_TOKEN_RESOURCE).trim();
+  return resource.endsWith('/') ? resource : `${resource}/`;
+}
+
+function getBlobServiceHost(storageAccountName) {
+  const suffix = String(process.env.STORAGE_BLOB_DNS_SUFFIX || DEFAULT_STORAGE_BLOB_DNS_SUFFIX).replace(/^\.+/, '').replace(/\/+$/, '');
+  if (!/^[a-z0-9.-]+$/.test(suffix) || suffix.includes('..')) {
+    throw new Error('STORAGE_BLOB_DNS_SUFFIX must be a valid DNS suffix such as blob.core.windows.net or blob.core.usgovcloudapi.net.');
+  }
+  return `${storageAccountName}.${suffix}`;
+}
+
 async function getManagedIdentityToken(resource) {
   const identityEndpoint = process.env.IDENTITY_ENDPOINT || process.env.MSI_ENDPOINT;
   if (!identityEndpoint) {
@@ -135,8 +151,8 @@ async function getManagedIdentityToken(resource) {
   return tokenResponse.access_token;
 }
 
-async function getUserDelegationKey(storageAccountName, accessToken, signedStart, signedExpiry) {
-  const response = await fetch(`https://${storageAccountName}.blob.core.windows.net/?restype=service&comp=userdelegationkey`, {
+async function getUserDelegationKey(blobServiceHost, accessToken, signedStart, signedExpiry) {
+  const response = await fetch(`https://${blobServiceHost}/?restype=service&comp=userdelegationkey`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,

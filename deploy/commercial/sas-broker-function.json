@@ -15,7 +15,7 @@
       "type": "string",
       "defaultValue": "[concat('func-ct-sas-', uniqueString(resourceGroup().id))]",
       "metadata": {
-        "description": "Name of the SAS broker Function App. This becomes https://<name>.azurewebsites.net."
+        "description": "Name of the SAS broker Function App. Azure returns the actual default hostname after deployment."
       }
     },
     "FunctionHostStorageAccountName": {
@@ -41,6 +41,20 @@
     "RepositoryBranch": {
       "type": "string",
       "defaultValue": "main"
+    },
+    "StorageBlobDnsSuffix": {
+      "type": "string",
+      "defaultValue": "blob.core.windows.net",
+      "metadata": {
+        "description": "Blob service DNS suffix used by generated SAS URLs. Commercial: blob.core.windows.net. Azure Government: blob.core.usgovcloudapi.net."
+      }
+    },
+    "StorageTokenResource": {
+      "type": "string",
+      "defaultValue": "https://storage.azure.com/",
+      "metadata": {
+        "description": "Managed identity token resource used when requesting Azure Storage user delegation keys."
+      }
     }
   },
   "variables": {
@@ -125,6 +139,14 @@
             {
               "name": "BROKER_SHARED_SECRET",
               "value": "[parameters('BrokerSharedSecret')]"
+            },
+            {
+              "name": "STORAGE_BLOB_DNS_SUFFIX",
+              "value": "[parameters('StorageBlobDnsSuffix')]"
+            },
+            {
+              "name": "STORAGE_TOKEN_RESOURCE",
+              "value": "[parameters('StorageTokenResource')]"
             },
             {
               "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
@@ -218,13 +240,17 @@
       "type": "string",
       "value": "[parameters('FunctionHostStorageAccountName')]"
     },
+    "functionDefaultHostName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites', parameters('SasBrokerFunctionAppName')), '2022-09-01').defaultHostName]"
+    },
     "healthUrl": {
       "type": "string",
-      "value": "[concat('https://', parameters('SasBrokerFunctionAppName'), '.azurewebsites.net/api/health')]"
+      "value": "[concat('https://', reference(resourceId('Microsoft.Web/sites', parameters('SasBrokerFunctionAppName')), '2022-09-01').defaultHostName, '/api/health')]"
     },
     "brokerUrlFormat": {
       "type": "string",
-      "value": "[concat('https://', parameters('SasBrokerFunctionAppName'), '.azurewebsites.net/api/generate-cybertriagesas?brokerCode=<BrokerSharedSecret>')]"
+      "value": "[concat('https://', reference(resourceId('Microsoft.Web/sites', parameters('SasBrokerFunctionAppName')), '2022-09-01').defaultHostName, '/api/generate-cybertriagesas?brokerCode=<BrokerSharedSecret>')]"
     }
   }
 }

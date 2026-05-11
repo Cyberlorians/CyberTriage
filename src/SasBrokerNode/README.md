@@ -37,7 +37,7 @@ App receives the full broker URL as the secure `SasBrokerUrl` parameter.
 
 ```json
 {
-  "sasUrl": "https://<account>.blob.core.windows.net/<container>?<sas>",
+  "sasUrl": "https://<account>.<blob-dns-suffix>/<container>?<sas>",
   "expiresOnUtc": "2026-05-07T18:00:00Z",
   "storageAccountName": "<evidence-storage-account>",
   "containerName": "cybertriage-results",
@@ -74,6 +74,26 @@ runtime path:
 The Function host storage app setting should use managed identity settings such
 as `AzureWebJobsStorage__accountName` and `AzureWebJobsStorage__credential`, not
 an `AzureWebJobsStorage` connection string containing an account key.
+
+## Sovereign Cloud Settings
+
+The broker defaults to commercial Azure:
+
+```text
+STORAGE_BLOB_DNS_SUFFIX=blob.core.windows.net
+STORAGE_TOKEN_RESOURCE=https://storage.azure.com/
+```
+
+For Azure Government / GCCH, deploy the broker with:
+
+```text
+STORAGE_BLOB_DNS_SUFFIX=blob.core.usgovcloudapi.net
+STORAGE_TOKEN_RESOURCE=https://storage.azure.com/
+```
+
+The generated SAS URL uses the configured blob DNS suffix. The storage token
+resource is exposed as an app setting so it can be changed if a sovereign tenant
+requires a different Storage OAuth resource later.
 
 ## Network Requirement
 

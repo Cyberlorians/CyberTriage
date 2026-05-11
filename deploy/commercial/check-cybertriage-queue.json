@@ -336,6 +336,18 @@
       "type": "string",
       "value": "[variables('PlaybookName')]"
     },
+    "logicAppName": {
+      "type": "string",
+      "value": "[variables('PlaybookName')]"
+    },
+    "logicAppResourceId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Logic/workflows', variables('PlaybookName'))]"
+    },
+    "principalId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Logic/workflows', variables('PlaybookName')), '2019-05-01', 'full').identity.principalId]"
+    },
     "watchlistResourceId": {
       "type": "string",
       "value": "[variables('watchlistResourceId')]"

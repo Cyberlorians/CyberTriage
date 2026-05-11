@@ -1,6 +1,6 @@
 # Commercial Deployment Templates
 
-These templates are the commercial Azure starter templates copied from the validated lab deployment.
+These templates are the shared CyberTriage deployment templates with commercial Azure defaults. Azure Government / GCCH wrappers pass sovereign cloud values into these same templates.
 
 ## Files
 
@@ -102,6 +102,12 @@ SentinelWorkspaceSubscriptionId
 WatchlistAlias
 PollFrequencyMinutes
 OnlineWindowMinutes
+DefenderApiBaseUri
+DefenderApiAudience
+ArmBaseUri
+ArmAudience
+StorageBlobDnsSuffix
+StorageTokenResource
 ```
 
 Do not store the real `SasBrokerUrl` in Git if it contains a secret or function key.

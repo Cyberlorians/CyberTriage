@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "location": {
-      "value": "eastus2"
+      "value": "usgovvirginia"
     },
     "SasBrokerFunctionAppName": {
       "value": "<globally-unique-function-app-name>"
@@ -21,13 +21,13 @@
       "value": "ForensicCollect"
     },
     "NotificationEmail": {
-      "value": "security-team@example.com"
+      "value": "security-team@example.us"
     },
     "SentinelWorkspaceResourceGroup": {
       "value": "<sentinel-workspace-resource-group>"
     },
     "SentinelWorkspaceName": {
-      "value": "<sentinel-workspace-name>"
+      "value": "<gcch-sentinel-workspace-name>"
     },
     "SentinelWorkspaceCustomerId": {
       "value": "<workspace-guid>"
@@ -44,29 +44,29 @@
     "SasPermissions": {
       "value": "racwdl"
     },
-    "StorageBlobDnsSuffix": {
-      "value": "blob.core.windows.net"
-    },
-    "StorageTokenResource": {
-      "value": "https://storage.azure.com/"
-    },
-    "DefenderApiBaseUri": {
-      "value": "https://api.securitycenter.microsoft.com"
-    },
-    "DefenderApiAudience": {
-      "value": "https://securitycenter.onmicrosoft.com/windowsatpservice"
-    },
-    "ArmBaseUri": {
-      "value": "https://management.azure.com"
-    },
-    "ArmAudience": {
-      "value": "https://management.azure.com/"
-    },
     "PollFrequencyMinutes": {
       "value": 60
     },
     "OnlineWindowMinutes": {
       "value": 60
+    },
+    "DefenderApiBaseUri": {
+      "value": "https://api-gov.securitycenter.microsoft.us"
+    },
+    "DefenderApiAudience": {
+      "value": "https://api-gov.securitycenter.microsoft.us"
+    },
+    "ArmBaseUri": {
+      "value": "https://management.usgovcloudapi.net"
+    },
+    "ArmAudience": {
+      "value": "https://management.usgovcloudapi.net/"
+    },
+    "StorageBlobDnsSuffix": {
+      "value": "blob.core.usgovcloudapi.net"
+    },
+    "StorageTokenResource": {
+      "value": "https://storage.azure.com/"
     }
   }
 }

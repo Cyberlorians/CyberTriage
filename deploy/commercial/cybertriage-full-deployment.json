@@ -76,6 +76,48 @@
       "type": "string",
       "defaultValue": "racwdl"
     },
+    "StorageBlobDnsSuffix": {
+      "type": "string",
+      "defaultValue": "blob.core.windows.net",
+      "metadata": {
+        "description": "Blob service DNS suffix used by generated SAS URLs. Commercial: blob.core.windows.net. Azure Government: blob.core.usgovcloudapi.net."
+      }
+    },
+    "StorageTokenResource": {
+      "type": "string",
+      "defaultValue": "https://storage.azure.com/",
+      "metadata": {
+        "description": "Managed identity token resource used by the SAS broker when requesting Azure Storage user delegation keys."
+      }
+    },
+    "DefenderApiBaseUri": {
+      "type": "string",
+      "defaultValue": "https://api.securitycenter.microsoft.com",
+      "metadata": {
+        "description": "Microsoft Defender for Endpoint API base URI. GCCH commonly uses https://api-gov.securitycenter.microsoft.us."
+      }
+    },
+    "DefenderApiAudience": {
+      "type": "string",
+      "defaultValue": "https://securitycenter.onmicrosoft.com/windowsatpservice",
+      "metadata": {
+        "description": "Managed identity token audience/resource for Microsoft Defender for Endpoint API calls."
+      }
+    },
+    "ArmBaseUri": {
+      "type": "string",
+      "defaultValue": "https://management.azure.com",
+      "metadata": {
+        "description": "Azure Resource Manager base URI used by raw HTTP actions."
+      }
+    },
+    "ArmAudience": {
+      "type": "string",
+      "defaultValue": "https://management.azure.com/",
+      "metadata": {
+        "description": "Managed identity token audience/resource for Azure Resource Manager calls."
+      }
+    },
     "PollFrequencyMinutes": {
       "type": "int",
       "defaultValue": 60
@@ -97,7 +139,6 @@
     "setPlaybookName": "Set-CyberTriage",
     "queuePlaybookName": "Check-CyberTriageQueue",
     "destinationContainerName": "cybertriage-results",
-    "sasBrokerUrl": "[concat('https://', parameters('SasBrokerFunctionAppName'), '.azurewebsites.net/api/generate-cybertriagesas?brokerCode=', parameters('BrokerSharedSecret'))]",
     "evidenceStorageResourceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('DestinationStorageAccountName'))]",
     "functionHostStorageResourceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('FunctionHostStorageAccountName'))]",
     "storageBlobDelegatorRoleId": "db58b8e5-c6ad-4a2a-8342-4190687cbf4a",
@@ -160,6 +201,12 @@
           },
           "BrokerSharedSecret": {
             "value": "[parameters('BrokerSharedSecret')]"
+          },
+          "StorageBlobDnsSuffix": {
+            "value": "[parameters('StorageBlobDnsSuffix')]"
+          },
+          "StorageTokenResource": {
+            "value": "[parameters('StorageTokenResource')]"
           }
         }
       }
@@ -189,7 +236,7 @@
             "value": "[parameters('DestinationStorageAccountName')]"
           },
           "SasBrokerUrl": {
-            "value": "[variables('sasBrokerUrl')]"
+            "value": "[concat('https://', reference('Deploy-SasBrokerFunction').outputs.functionDefaultHostName.value, '/api/generate-cybertriagesas?brokerCode=', parameters('BrokerSharedSecret'))]"
           },
           "SasExpiryMinutes": {
             "value": "[parameters('SasExpiryMinutes')]"
@@ -214,6 +261,18 @@
           },
           "WatchlistAlias": {
             "value": "[parameters('WatchlistAlias')]"
+          },
+          "DefenderApiBaseUri": {
+            "value": "[parameters('DefenderApiBaseUri')]"
+          },
+          "DefenderApiAudience": {
+            "value": "[parameters('DefenderApiAudience')]"
+          },
+          "ArmBaseUri": {
+            "value": "[parameters('ArmBaseUri')]"
+          },
+          "ArmAudience": {
+            "value": "[parameters('ArmAudience')]"
           }
         }
       }
@@ -252,6 +311,12 @@
           },
           "WatchlistAlias": {
             "value": "[parameters('WatchlistAlias')]"
+          },
+          "DefenderApiBaseUri": {
+            "value": "[parameters('DefenderApiBaseUri')]"
+          },
+          "DefenderApiAudience": {
+            "value": "[parameters('DefenderApiAudience')]"
           }
         }
       }
@@ -447,6 +512,10 @@
     "functionHostStorageAccountName": {
       "type": "string",
       "value": "[parameters('FunctionHostStorageAccountName')]"
+    },
+    "sasBrokerHealthUrl": {
+      "type": "string",
+      "value": "[reference('Deploy-SasBrokerFunction').outputs.healthUrl.value]"
     },
     "collectionLogicAppName": {
       "type": "string",

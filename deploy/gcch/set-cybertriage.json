@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "title": "Set-CyberTriage - GCCH",
+    "description": "Azure Government wrapper for the Set-CyberTriage playbook.",
+    "author": "Security Engineering"
+  },
+  "parameters": {
+    "location": { "type": "string", "defaultValue": "usgovvirginia" },
+    "TargetDeviceTag": { "type": "string", "defaultValue": "ForensicCollect" },
+    "SentinelWorkspaceResourceGroup": { "type": "string", "defaultValue": "Sentinel" },
+    "SentinelWorkspaceName": { "type": "string", "defaultValue": "<gcch-sentinel-workspace-name>" },
+    "SentinelWorkspaceCustomerId": { "type": "string", "defaultValue": "<workspace-guid>" },
+    "SentinelWorkspaceSubscriptionId": { "type": "string", "defaultValue": "[subscription().subscriptionId]" },
+    "WatchlistAlias": { "type": "string", "defaultValue": "ForensicCollectQueue" },
+    "DefenderApiBaseUri": {
+      "type": "string",
+      "defaultValue": "https://api-gov.securitycenter.microsoft.us"
+    },
+    "DefenderApiAudience": {
+      "type": "string",
+      "defaultValue": "https://api-gov.securitycenter.microsoft.us"
+    },
+    "TemplateBaseUri": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/Cyberlorians/CyberTriage/main/deploy/commercial/"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "Deploy-Set-CyberTriage-GCCH",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(parameters('TemplateBaseUri'), 'set-cybertriage.json')]",
+          "contentVersion": "3.0.0.0"
+        },
+        "parameters": {
+          "location": { "value": "[parameters('location')]" },
+          "TargetDeviceTag": { "value": "[parameters('TargetDeviceTag')]" },
+          "SentinelWorkspaceResourceGroup": { "value": "[parameters('SentinelWorkspaceResourceGroup')]" },
+          "SentinelWorkspaceName": { "value": "[parameters('SentinelWorkspaceName')]" },
+          "SentinelWorkspaceCustomerId": { "value": "[parameters('SentinelWorkspaceCustomerId')]" },
+          "SentinelWorkspaceSubscriptionId": { "value": "[parameters('SentinelWorkspaceSubscriptionId')]" },
+          "WatchlistAlias": { "value": "[parameters('WatchlistAlias')]" },
+          "DefenderApiBaseUri": { "value": "[parameters('DefenderApiBaseUri')]" },
+          "DefenderApiAudience": { "value": "[parameters('DefenderApiAudience')]" }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "playbookName": { "type": "string", "value": "[reference('Deploy-Set-CyberTriage-GCCH').outputs.playbookName.value]" },
+    "sentinelConnectionName": { "type": "string", "value": "[reference('Deploy-Set-CyberTriage-GCCH').outputs.sentinelConnectionName.value]" },
+    "requiredDefenderApiPermissions": { "type": "array", "value": "[reference('Deploy-Set-CyberTriage-GCCH').outputs.requiredDefenderApiPermissions.value]" },
+    "requiredRoleAssignments": { "type": "array", "value": "[reference('Deploy-Set-CyberTriage-GCCH').outputs.requiredRoleAssignments.value]" }
+  }
+}

@@ -1,0 +1,206 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "title": "CyberTriage Full GCCH Deployment",
+    "description": "Azure Government wrapper for the full CyberTriage deployment. It supplies GCCH endpoint defaults to the shared commercial templates.",
+    "author": "Security Engineering"
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "usgovvirginia"
+    },
+    "SasBrokerFunctionAppName": {
+      "type": "string",
+      "defaultValue": "[concat('func-ct-sas-gov-', uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "Name of the SAS broker Function App."
+      }
+    },
+    "FunctionHostStorageAccountName": {
+      "type": "string",
+      "defaultValue": "[toLower(concat('stctgov', uniqueString(resourceGroup().id)))]",
+      "metadata": {
+        "description": "Storage account used by the SAS broker Function host runtime."
+      }
+    },
+    "BrokerSharedSecret": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Long random secret for the SAS broker. Save it securely. It is not a storage account key."
+      }
+    },
+    "DestinationStorageAccountName": {
+      "type": "string",
+      "defaultValue": "[toLower(concat('stctresgov', uniqueString(resourceGroup().id)))]",
+      "metadata": {
+        "description": "Evidence storage account created by this deployment for encrypted CyberTriage artifacts. Must be globally unique, lowercase, and 3-24 characters."
+      }
+    },
+    "TargetDeviceTag": {
+      "type": "string",
+      "defaultValue": "ForensicCollect"
+    },
+    "NotificationEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "Email address for optional Office 365 notification."
+      }
+    },
+    "SentinelWorkspaceResourceGroup": {
+      "type": "string",
+      "defaultValue": "Sentinel"
+    },
+    "SentinelWorkspaceName": {
+      "type": "string",
+      "defaultValue": "<gcch-sentinel-workspace-name>"
+    },
+    "SentinelWorkspaceCustomerId": {
+      "type": "string",
+      "defaultValue": "<workspace-guid>"
+    },
+    "SentinelWorkspaceSubscriptionId": {
+      "type": "string",
+      "defaultValue": "[subscription().subscriptionId]"
+    },
+    "WatchlistAlias": {
+      "type": "string",
+      "defaultValue": "ForensicCollectQueue"
+    },
+    "SasExpiryMinutes": {
+      "type": "int",
+      "defaultValue": 1440
+    },
+    "SasPermissions": {
+      "type": "string",
+      "defaultValue": "racwdl"
+    },
+    "PollFrequencyMinutes": {
+      "type": "int",
+      "defaultValue": 60
+    },
+    "OnlineWindowMinutes": {
+      "type": "int",
+      "defaultValue": 60
+    },
+    "DefenderApiBaseUri": {
+      "type": "string",
+      "defaultValue": "https://api-gov.securitycenter.microsoft.us",
+      "metadata": {
+        "description": "Microsoft Defender for Endpoint API base URI for GCC High. GCC normally uses https://api-gcc.securitycenter.microsoft.us."
+      }
+    },
+    "DefenderApiAudience": {
+      "type": "string",
+      "defaultValue": "https://api-gov.securitycenter.microsoft.us",
+      "metadata": {
+        "description": "Managed identity token audience/resource for Microsoft Defender for Endpoint API calls in GCC High."
+      }
+    },
+    "ArmBaseUri": {
+      "type": "string",
+      "defaultValue": "https://management.usgovcloudapi.net",
+      "metadata": {
+        "description": "Azure Government Resource Manager base URI."
+      }
+    },
+    "ArmAudience": {
+      "type": "string",
+      "defaultValue": "https://management.usgovcloudapi.net/",
+      "metadata": {
+        "description": "Azure Government Resource Manager managed identity audience."
+      }
+    },
+    "StorageBlobDnsSuffix": {
+      "type": "string",
+      "defaultValue": "blob.core.usgovcloudapi.net",
+      "metadata": {
+        "description": "Azure Government Blob service DNS suffix."
+      }
+    },
+    "StorageTokenResource": {
+      "type": "string",
+      "defaultValue": "https://storage.azure.com/",
+      "metadata": {
+        "description": "Managed identity token resource for Azure Storage user delegation keys."
+      }
+    },
+    "TemplateBaseUri": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/Cyberlorians/CyberTriage/main/deploy/commercial/",
+      "metadata": {
+        "description": "Base URI for the shared linked templates."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "Deploy-CyberTriage-GCCH-Full",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[concat(parameters('TemplateBaseUri'), 'cybertriage-full-deployment.json')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": { "value": "[parameters('location')]" },
+          "SasBrokerFunctionAppName": { "value": "[parameters('SasBrokerFunctionAppName')]" },
+          "FunctionHostStorageAccountName": { "value": "[parameters('FunctionHostStorageAccountName')]" },
+          "BrokerSharedSecret": { "value": "[parameters('BrokerSharedSecret')]" },
+          "DestinationStorageAccountName": { "value": "[parameters('DestinationStorageAccountName')]" },
+          "TargetDeviceTag": { "value": "[parameters('TargetDeviceTag')]" },
+          "NotificationEmail": { "value": "[parameters('NotificationEmail')]" },
+          "SentinelWorkspaceResourceGroup": { "value": "[parameters('SentinelWorkspaceResourceGroup')]" },
+          "SentinelWorkspaceName": { "value": "[parameters('SentinelWorkspaceName')]" },
+          "SentinelWorkspaceCustomerId": { "value": "[parameters('SentinelWorkspaceCustomerId')]" },
+          "SentinelWorkspaceSubscriptionId": { "value": "[parameters('SentinelWorkspaceSubscriptionId')]" },
+          "WatchlistAlias": { "value": "[parameters('WatchlistAlias')]" },
+          "SasExpiryMinutes": { "value": "[parameters('SasExpiryMinutes')]" },
+          "SasPermissions": { "value": "[parameters('SasPermissions')]" },
+          "PollFrequencyMinutes": { "value": "[parameters('PollFrequencyMinutes')]" },
+          "OnlineWindowMinutes": { "value": "[parameters('OnlineWindowMinutes')]" },
+          "StorageBlobDnsSuffix": { "value": "[parameters('StorageBlobDnsSuffix')]" },
+          "StorageTokenResource": { "value": "[parameters('StorageTokenResource')]" },
+          "DefenderApiBaseUri": { "value": "[parameters('DefenderApiBaseUri')]" },
+          "DefenderApiAudience": { "value": "[parameters('DefenderApiAudience')]" },
+          "ArmBaseUri": { "value": "[parameters('ArmBaseUri')]" },
+          "ArmAudience": { "value": "[parameters('ArmAudience')]" },
+          "TemplateBaseUri": { "value": "[parameters('TemplateBaseUri')]" }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "sasBrokerFunctionAppName": {
+      "type": "string",
+      "value": "[reference('Deploy-CyberTriage-GCCH-Full').outputs.sasBrokerFunctionAppName.value]"
+    },
+    "functionHostStorageAccountName": {
+      "type": "string",
+      "value": "[reference('Deploy-CyberTriage-GCCH-Full').outputs.functionHostStorageAccountName.value]"
+    },
+    "sasBrokerHealthUrl": {
+      "type": "string",
+      "value": "[reference('Deploy-CyberTriage-GCCH-Full').outputs.sasBrokerHealthUrl.value]"
+    },
+    "collectionLogicAppName": {
+      "type": "string",
+      "value": "[reference('Deploy-CyberTriage-GCCH-Full').outputs.collectionLogicAppName.value]"
+    },
+    "setLogicAppName": {
+      "type": "string",
+      "value": "[reference('Deploy-CyberTriage-GCCH-Full').outputs.setLogicAppName.value]"
+    },
+    "queueLogicAppName": {
+      "type": "string",
+      "value": "[reference('Deploy-CyberTriage-GCCH-Full').outputs.queueLogicAppName.value]"
+    },
+    "nextStep": {
+      "type": "string",
+      "value": "[reference('Deploy-CyberTriage-GCCH-Full').outputs.nextStep.value]"
+    }
+  }
+}

@@ -37,14 +37,28 @@
     "WatchlistAlias": {
       "type": "string",
       "defaultValue": "ForensicCollectQueue"
+    },
+    "DefenderApiBaseUri": {
+      "type": "string",
+      "defaultValue": "https://api.securitycenter.microsoft.com",
+      "metadata": {
+        "description": "Microsoft Defender for Endpoint API base URI."
+      }
+    },
+    "DefenderApiAudience": {
+      "type": "string",
+      "defaultValue": "https://securitycenter.onmicrosoft.com/windowsatpservice",
+      "metadata": {
+        "description": "Managed identity token audience/resource for Microsoft Defender for Endpoint API calls."
+      }
     }
   },
   "variables": {
     "PlaybookName": "Set-CyberTriage",
     "sentinelConnectionName": "[concat('azuresentinel-', variables('PlaybookName'))]",
     "sentinelConnectionId": "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), 'azuresentinel')]",
-    "defenderApiBaseUri": "https://api.securitycenter.microsoft.com",
-    "defenderApiAudience": "https://securitycenter.onmicrosoft.com/windowsatpservice",
+    "defenderApiBaseUri": "[parameters('DefenderApiBaseUri')]",
+    "defenderApiAudience": "[parameters('DefenderApiAudience')]",
     "armBaseUri": "https://management.azure.com",
     "armAudience": "https://management.azure.com/"
   },
@@ -113,6 +127,14 @@
             "WatchlistAlias": {
               "type": "String",
               "defaultValue": "[parameters('WatchlistAlias')]"
+            },
+            "DefenderApiBaseUri": {
+              "type": "String",
+              "defaultValue": "[variables('defenderApiBaseUri')]"
+            },
+            "DefenderApiAudience": {
+              "type": "String",
+              "defaultValue": "[variables('defenderApiAudience')]"
             }
           },
           "triggers": {
@@ -190,13 +212,13 @@
                       "runAfter": {},
                       "inputs": {
                         "method": "POST",
-                        "uri": "@{concat('https://api.securitycenter.microsoft.com/api/machines/', encodeURIComponent(outputs('Compose_MdatpDeviceId')), '/tags')}",
+                        "uri": "@{concat(parameters('DefenderApiBaseUri'), '/api/machines/', encodeURIComponent(outputs('Compose_MdatpDeviceId')), '/tags')}",
                         "headers": {
                           "Content-Type": "application/json"
                         },
                         "authentication": {
                           "type": "ManagedServiceIdentity",
-                          "audience": "https://securitycenter.onmicrosoft.com/windowsatpservice"
+                          "audience": "@parameters('DefenderApiAudience')"
                         },
                         "body": {
                           "Value": "@{parameters('TargetDeviceTag')}",

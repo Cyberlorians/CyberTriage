@@ -5,8 +5,8 @@ Commercial Azure and GCCH are different clouds. Do not assume every URL, connect
 This repo currently has:
 
 ```text
-Commercial templates: validated lab starter
-GCCH templates: draft copies pending endpoint verification
+Commercial templates: shared workflow templates with commercial defaults
+GCCH templates: Azure Government wrappers with GCCH defaults
 ```
 
 ## Commercial Values From The Lab
@@ -26,52 +26,50 @@ Important commercial MDE gotcha:
 
 The token audience used for MDE managed identity is not the same as the API URL. Using the API URL as the audience caused 403 errors in previous testing.
 
-## GCCH Values To Verify
+## GCCH Values Verified May 9, 2026
 
-These must be verified in the actual GCCH tenant before final deployment:
+These values were verified in an AzureUSGovernment tenant in `usgovvirginia`.
+Runtime MDE collection still requires an onboarded active device.
 
-| Item | GCCH / Azure Government Candidate |
+| Item | GCCH / Azure Government Value |
 |---|---|
-| Azure Resource Manager | `https://management.usgovcloudapi.net` |
+| Azure Resource Manager | `https://management.usgovcloudapi.net/` |
 | ARM managed identity audience | `https://management.usgovcloudapi.net/` |
 | Azure portal | `https://portal.azure.us` |
 | Storage DNS suffix | `blob.core.usgovcloudapi.net` |
 | Microsoft Entra authority | `https://login.microsoftonline.us` |
-| MDE API URL | Verify tenant cloud. Common government endpoints differ by environment. |
-| MDE token audience | Verify with Defender API docs and tenant service principal. Do not guess. |
-| Logic App managed API connector availability | Verify in Azure Government region. |
+| Microsoft Graph resource | `https://graph.microsoft.us/` |
+| MDE API URL for GCC High | `https://api-gov.securitycenter.microsoft.us` |
+| MDE token audience used by GCCH wrappers | `https://api-gov.securitycenter.microsoft.us` |
+| WindowsDefenderATP app ID | `fc780465-2017-40d4-a0c5-307022471b92` |
+| Logic App managed API connectors in `usgovvirginia` | `azuresentinel`, `azuremonitorlogs`, `office365`, `wdatp` present |
 
-## Why The GCCH Templates Are Draft
+For regular GCC, Microsoft documents the Defender for Endpoint API endpoint as
+`https://api-gcc.securitycenter.microsoft.us`. GCC High uses
+`https://api-gov.securitycenter.microsoft.us`.
 
-The current templates have commercial values embedded in variables such as:
+## How The Templates Handle Cloud Values
+
+The shared templates expose these values as parameters instead of hardcoding
+them:
 
 ```text
-https://management.azure.com
-https://api.loganalytics.io
-https://api.securitycenter.microsoft.com
-https://securitycenter.onmicrosoft.com/windowsatpservice
+DefenderApiBaseUri
+DefenderApiAudience
+ArmBaseUri
+ArmAudience
+StorageBlobDnsSuffix
+StorageTokenResource
 ```
 
-For GCCH, these should become parameters or environment variables instead of hardcoded strings.
+The GCCH wrappers in [../deploy/gcch](../deploy/gcch) pass Azure Government
+defaults into the shared templates in [../deploy/commercial](../deploy/commercial).
 
-## Recommended Template Improvement
+## Parameter Files
 
-Create a cloud settings object like this:
-
-```json
-{
-  "cloudName": "commercial",
-  "armBaseUri": "https://management.azure.com",
-  "armAudience": "https://management.azure.com/",
-  "logAnalyticsApiBaseUri": "https://api.loganalytics.io",
-  "logAnalyticsAudience": "https://api.loganalytics.io",
-  "mdeApiBaseUri": "https://api.securitycenter.microsoft.com",
-  "mdeAudience": "https://securitycenter.onmicrosoft.com/windowsatpservice",
-  "storageBlobDnsSuffix": "blob.core.windows.net"
-}
-```
-
-Then create one parameter file for commercial and one for GCCH.
+Use [../deploy/commercial/full.sample.parameters.json](../deploy/commercial/full.sample.parameters.json)
+for commercial deployments and [../deploy/gcch/full.sample.parameters.json](../deploy/gcch/full.sample.parameters.json)
+for Azure Government / GCCH deployments.
 
 ## Commercial Deployment Buttons
 
@@ -83,13 +81,12 @@ After this repo is pushed to GitHub, add buttons like this to the README and com
 
 ## GCCH Deployment Buttons
 
-After GCCH templates are verified and pushed to GitHub, add Azure Government buttons like this:
+Azure Government buttons use `https://portal.azure.us` and point at templates in
+`deploy/gcch`:
 
 ```markdown
 [![Deploy to Azure Government](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/<raw-gcch-template-url>)
 ```
-
-Do not publish a one-click GCCH button until the endpoint values are verified.
 
 ## Connector Warning
 

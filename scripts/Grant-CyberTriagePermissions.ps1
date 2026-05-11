@@ -18,6 +18,9 @@
     templates use raw HTTP actions with managed identity for MDE calls, so these
     Entra app-role assignments are required unless they are set manually.
 
+    The script uses the active Azure CLI cloud profile to choose the Microsoft
+    Graph endpoint, so it can run in Azure Commercial or Azure Government.
+
 .PERMISSIONS REQUIRED TO RUN
     Azure RBAC role assignment section:
       - Owner OR User Access Administrator at each target scope.
@@ -76,7 +79,11 @@ param(
 
     [string[]]$CollectionDefenderAppRoles = @('Machine.Read.All', 'Machine.ReadWrite.All', 'Machine.LiveResponse'),
 
-    [string[]]$DefenderAppRoles = @()
+    [string[]]$DefenderAppRoles = @(),
+
+    [string]$DefenderAppId = 'fc780465-2017-40d4-a0c5-307022471b92',
+
+    [string]$MicrosoftGraphResource = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -115,6 +122,19 @@ function Invoke-AzCliJson {
         return $null
     }
     return $outputText | ConvertFrom-Json
+}
+
+function Get-CloudGraphBaseUri {
+    if (-not [string]::IsNullOrWhiteSpace($MicrosoftGraphResource)) {
+        return $MicrosoftGraphResource.TrimEnd('/')
+    }
+
+    $cloudGraphResource = az cloud show --query endpoints.microsoftGraphResourceId -o tsv
+    if ([string]::IsNullOrWhiteSpace($cloudGraphResource)) {
+        return 'https://graph.microsoft.com'
+    }
+
+    return $cloudGraphResource.TrimEnd('/')
 }
 
 function Get-RequiredPrincipalId {
@@ -172,8 +192,7 @@ function Grant-DefenderAppRoleIfMissing {
         [Parameter(Mandatory = $true)][string]$RoleValue
     )
 
-    $defenderAppId = 'fc780465-2017-40d4-a0c5-307022471b92'
-    $defenderSp = Invoke-AzCliJson @('ad', 'sp', 'show', '--id', $defenderAppId, '-o', 'json')
+    $defenderSp = Invoke-AzCliJson @('ad', 'sp', 'show', '--id', $DefenderAppId, '-o', 'json')
     $role = $defenderSp.appRoles | Where-Object { $_.value -eq $RoleValue -and $_.allowedMemberTypes -contains 'Application' -and $_.isEnabled }
 
     if (-not $role) {
@@ -181,7 +200,7 @@ function Grant-DefenderAppRoleIfMissing {
         return
     }
 
-    $existingUrl = "https://graph.microsoft.com/v1.0/servicePrincipals/$PrincipalId/appRoleAssignments"
+    $existingUrl = "$script:GraphBaseUri/v1.0/servicePrincipals/$PrincipalId/appRoleAssignments"
     $existing = Invoke-AzCliJson @('rest', '--method', 'get', '--url', $existingUrl, '-o', 'json')
     $alreadyAssigned = $existing.value | Where-Object { $_.resourceId -eq $defenderSp.id -and $_.appRoleId -eq $role.id }
     if ($alreadyAssigned) {
@@ -203,6 +222,9 @@ function Grant-DefenderAppRoleIfMissing {
 
 Write-Section 'Set subscription'
 az account set --subscription $SubscriptionId | Out-Null
+
+$script:GraphBaseUri = Get-CloudGraphBaseUri
+Write-Host "Microsoft Graph endpoint: $script:GraphBaseUri"
 
 Write-Section 'Resolve resource scopes'
 $evidenceStorage = Invoke-AzCliJson @('storage', 'account', 'show', '--resource-group', $EvidenceStorageResourceGroup, '--name', $EvidenceStorageAccountName, '-o', 'json')
