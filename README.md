@@ -287,33 +287,26 @@ Live response → Library**.
 <details>
 <summary><b>Step 5. Create The Sentinel Watchlist</b></summary>
 
-Create the `ForensicCollectQueue` watchlist in the same Sentinel workspace you
-entered during deploy. The Logic Apps read and write rows in this watchlist to
-track collection state.
+The Logic Apps read and write rows in this watchlist to track collection
+state. The starter CSV is in this repo and seeds the column schema the Logic
+Apps expect.
 
-Starter CSV in this repo:
-[assets/watchlists/ForensicCollectQueue.csv](assets/watchlists/ForensicCollectQueue.csv)
+1. Download the starter CSV:
+   [assets/watchlists/ForensicCollectQueue.csv](assets/watchlists/ForensicCollectQueue.csv)
+2. In Microsoft Sentinel, open the same workspace you used at deploy.
+3. **Configuration → Watchlists → + New**.
+4. **General** tab:
+   - **Name:** `ForensicCollectQueue`
+   - **Alias:** `ForensicCollectQueue` (must match the deploy parameter)
+   - **Description:** `CyberTriage collection queue`
+5. **Source** tab:
+   - **Source type:** Local file
+   - **File:** upload the CSV you downloaded in step 1
+   - **Number of header rows:** `1`
+   - **Search key:** `MdatpDeviceId`
+6. **Review and create → Create**.
 
-How to create it in the Sentinel portal:
-
-```text
-1. Open Microsoft Sentinel and select the workspace from deploy.
-2. Configuration -> Watchlists.
-3. Select + New.
-4. General tab:
-     Name:        ForensicCollectQueue
-     Alias:       ForensicCollectQueue   (must match the deploy parameter)
-     Description: CyberTriage collection queue
-5. Select Next: Source.
-6. Source tab:
-     Source type:           Local file
-     File:                  upload ForensicCollectQueue.csv from this repo
-     Number of header rows: 1
-     Search key:            MdatpDeviceId
-7. Select Next: Review and create -> Create.
-```
-
-Important columns:
+Column reference:
 
 | Column | Purpose |
 |---|---|
@@ -325,8 +318,6 @@ Important columns:
 | `Attempts` | Dispatch attempt count. The queue checker increments it. |
 | `Status` | Blank or `Pending` is treated as ready. Other values: `BlockedLiveResponse`, `Dispatched`. |
 | `RetryAfterUtc` | If set, the queue checker waits until this time before retrying. |
-
-Blank `Status` is valid and is treated as pending.
 
 </details>
 
