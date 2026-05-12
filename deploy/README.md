@@ -165,82 +165,98 @@ The script is idempotent. Running it again only adds missing roles.
 
 ## Verification
 
-### Step 3. Confirm Resources Exist
+### Step 3. Authorize Logic App API Connections
 
-In the CyberTriage resource group, confirm:
+The Sentinel and Log Analytics connections use managed identity and do not
+need user authorization. The Office 365 connection is the only one that
+requires a user to sign in, and only if `NotificationEmail` was filled in at
+deploy time.
 
-```text
-Function App:
-  Your SAS broker Function App
-
-Storage accounts:
-  Function host storage account
-  Destination/evidence storage account
-
-Logic Apps:
-  CyberTriage-LiveResponse-Collection
-  Set-CyberTriage
-  Check-CyberTriageQueue
-
-Blob container in evidence storage:
-  cybertriage-results
-```
-
-Do not enable `Check-CyberTriageQueue` yet.
-
-### Step 4. Save Deployment Output Values
-
-From the deployment Outputs blade, save:
+If you set a notification email:
 
 ```text
-sasBrokerFunctionAppName
-functionHostStorageAccountName
-sasBrokerHealthUrl
-collectionLogicAppName
-setLogicAppName
-queueLogicAppName
+1. Open the CyberTriage resource group.
+2. Open the API connection that starts with: office365-
+3. Select Edit API connection.
+4. Select Authorize and sign in with a mailbox that can send mail.
+5. Select Save.
 ```
 
-### Step 5. Check API Connections
+If you left the email blank, skip this step.
 
-Open each Logic App and check these API connections:
+### Step 4. Upload The MDE Live Response Library Files
 
-| Connection | Expected Auth | Notes |
-|---|---|---|
-| `azuresentinel-*` | Managed identity | Used for incident trigger/entity and watchlist actions. |
-| `azuremonitorlogs-*` | Managed identity | Used by the queue checker to query Watchlist and DeviceInfo. |
-| `office365-*` | User authorization, optional | Needed only if `NotificationEmail` was filled in. |
-
-MDE is not authorized through a WDATP connector. MDE calls use raw HTTP actions
-with the Logic App managed identity.
-
-### Step 6. Create Or Verify The Sentinel Watchlist
-
-In Microsoft Sentinel, create or verify this watchlist alias:
-
-```text
-ForensicCollectQueue
-```
-
-Starter CSV: [../assets/watchlists/ForensicCollectQueue.csv](../assets/watchlists/ForensicCollectQueue.csv)
-
-Important columns: `MdatpDeviceId`, `DeviceName`, `IncidentId`, `TagName`,
-`EnqueuedTime`, `Attempts`, `Status`, `RetryAfterUtc`. Blank `Status` is valid
-and is treated as pending.
-
-### Step 7. Upload MDE Live Response Library Files
-
-In Microsoft Defender for Endpoint, upload these exact file names to the Live
-Response Library:
+Upload both files to the Microsoft Defender for Endpoint Live Response
+Library. The names must match exactly.
 
 ```text
 CyberTriageCollector.exe
 Run-CyberTriage.ps1
 ```
 
-The wrapper script: [../src/LiveResponse/Run-CyberTriage.ps1](../src/LiveResponse/Run-CyberTriage.ps1)
+The wrapper script is in this repo:
+[../src/LiveResponse/Run-CyberTriage.ps1](../src/LiveResponse/Run-CyberTriage.ps1)
 
-### Step 8. Test The Broker Health Endpoint
+How to upload in the Microsoft Defender portal:
+
+```text
+1. Open https://security.microsoft.com  (GCCH: https://security.microsoft.us)
+2. Settings -> Endpoints -> Advanced features.
+3. Confirm Live Response is on for servers and clients as needed.
+4. Select any onboarded device -> Initiate Live Response Session.
+5. In the Live Response console, select the Library icon (top right).
+6. Select Upload file to library.
+7. Upload CyberTriageCollector.exe. Add a description. Select Confirm.
+8. Repeat: Upload file to library -> Run-CyberTriage.ps1 -> Confirm.
+9. Close the Live Response session.
+```
+
+The two files are now available to every Live Response session in the tenant.
+
+### Step 5. Create The Sentinel Watchlist
+
+Create the `ForensicCollectQueue` watchlist in the same Sentinel workspace you
+entered during deploy. The Logic Apps read and write rows in this watchlist to
+track collection state.
+
+Starter CSV in this repo:
+[../assets/watchlists/ForensicCollectQueue.csv](../assets/watchlists/ForensicCollectQueue.csv)
+
+How to create it in the Sentinel portal:
+
+```text
+1. Open Microsoft Sentinel and select the workspace from deploy.
+2. Configuration -> Watchlists.
+3. Select + New.
+4. General tab:
+     Name:        ForensicCollectQueue
+     Alias:       ForensicCollectQueue   (must match the deploy parameter)
+     Description: CyberTriage collection queue
+5. Select Next: Source.
+6. Source tab:
+     Source type:           Local file
+     File:                  upload ForensicCollectQueue.csv from this repo
+     Number of header rows: 1
+     Search key:            MdatpDeviceId
+7. Select Next: Review and create -> Create.
+```
+
+Important columns:
+
+| Column | Purpose |
+|---|---|
+| `MdatpDeviceId` | MDE device ID. Required. Used as the watchlist search key. |
+| `DeviceName` | Friendly device name. Optional. |
+| `IncidentId` | Sentinel incident that triggered the queue row. Optional. |
+| `TagName` | MDE tag used to dispatch this row. Defaults to the deploy tag. |
+| `EnqueuedTime` | UTC timestamp the row was added. |
+| `Attempts` | Dispatch attempt count. The queue checker increments it. |
+| `Status` | Blank or `Pending` is treated as ready. Other values: `BlockedLiveResponse`, `Dispatched`. |
+| `RetryAfterUtc` | If set, the queue checker waits until this time before retrying. |
+
+Blank `Status` is valid and is treated as pending.
+
+### Step 6. Test The Broker Health Endpoint
 
 Open the `sasBrokerHealthUrl` deployment output in a browser.
 
@@ -254,7 +270,7 @@ Expected:
 { "status": "ok" }
 ```
 
-### Step 9. Test SAS Generation
+### Step 7. Test SAS Generation
 
 POST to the broker URL with the broker secret. Returned `sasUrl` should start:
 
@@ -262,7 +278,7 @@ POST to the broker URL with the broker secret. Returned `sasUrl` should start:
 |---|---|
 | `https://<destination-storage-account>.blob.core.windows.net/cybertriage-results?` | `https://<destination-storage-account>.blob.core.usgovcloudapi.net/cybertriage-results?` |
 
-### Step 10. Run One Controlled Device Test
+### Step 8. Run One Controlled Device Test
 
 Pick one onboarded MDE device that has been recently seen and can run Live
 Response.
@@ -279,7 +295,7 @@ Response.
 
 Expected blob name pattern: `cttout_<device>_<timestamp>.json.gz.enc.01`
 
-### Step 11. Enable The Queue Checker
+### Step 9. Enable The Queue Checker
 
 Only after one controlled test works:
 
