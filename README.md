@@ -324,19 +324,12 @@ Column reference:
 <details>
 <summary><b>Step 6. Test The Broker Health Endpoint</b></summary>
 
-The deployment Outputs blade has the full URL ready to click — you do not need
-to know the Function App name.
-
-1. In the Azure portal, open the resource group you deployed into.
-2. **Settings → Deployments**, open the most recent CyberTriage deployment.
-3. Select **Outputs**.
-4. Copy or click the value of `sasBrokerHealthUrl`. It looks like:
-
-   | Commercial | GCCH |
-   |---|---|
-   | `https://<function-app-name>.azurewebsites.net/api/health` | `https://<function-app-name>.azurewebsites.us/api/health` |
-
-5. Open it in a browser.
+1. In the Azure portal, open the SAS broker Function App in the resource group
+   you deployed into (the one whose name starts with `func-`).
+2. Select **Functions** in the left blade.
+3. Open the function named **Health**.
+4. Top right, select **Get function URL** → copy.
+5. Paste the URL into a browser.
 
 Expected response:
 
@@ -344,9 +337,7 @@ Expected response:
 { "status": "ok" }
 ```
 
-If you get a 404, wait a minute for the Function to warm up and refresh. If
-you get a 401, something is wrong with the Function authorization — re-check
-the deploy outputs.
+If you get a 404, wait a minute for the Function to warm up and refresh.
 
 </details>
 
