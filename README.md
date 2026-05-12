@@ -289,6 +289,112 @@ exactly.
 Upload both in the Microsoft Defender portal under **Settings → Endpoints →
 Live response → Library**.
 
+> **GCCH portal upload fallback:** the GCCH Defender portal sometimes
+> rejects the `.exe` upload with the generic error `Failed to upload file —
+> A problem occurred while running the command.` The PS1 typically uploads
+> fine; only the EXE fails. The MDE API accepts the same file without
+> issue. If you hit this, use the API path below.
+
+<details>
+<summary><b>API upload fallback (only if the portal fails)</b></summary>
+
+You need a Global Administrator or equivalent to register an app and grant
+consent. The app is temporary — delete it as soon as the upload succeeds.
+
+```powershell
+# 1. Sign in to the right cloud
+az cloud set --name AzureUSGovernment   # or AzureCloud for commercial
+az login
+
+# 2. Register a temporary app + service principal
+$appName = 'ct-mde-library-uploader'
+$app  = az ad app create --display-name $appName --sign-in-audience AzureADMyOrg -o json | ConvertFrom-Json
+$sp   = az ad sp create --id $app.appId -o json | ConvertFrom-Json
+$appId = $app.appId
+$spObj = $sp.id
+
+# 3. Grant Machine.LiveResponse + Library.Manage on WindowsDefenderATP
+$defAppId   = 'fc780465-2017-40d4-a0c5-307022471b92'
+$defSpObj   = az ad sp show --id $defAppId --query id -o tsv
+$liveResp   = '3bd6eed4-7f17-4c52-9148-4cb5fae0b344'   # Machine.LiveResponse
+$libManage  = '5a1f6071-4396-4cab-957a-6754afcfb7c5'   # Library.Manage
+$graph      = az cloud show --query endpoints.microsoftGraphResourceId -o tsv
+foreach ($roleId in @($liveResp, $libManage)) {
+    $tmp = New-TemporaryFile
+    @{ principalId=$spObj; resourceId=$defSpObj; appRoleId=$roleId } |
+        ConvertTo-Json | Set-Content -Path $tmp.FullName -Encoding utf8
+    az rest --method post `
+        --uri "$graph/v1.0/servicePrincipals/$spObj/appRoleAssignments" `
+        --body "@$($tmp.FullName)" `
+        --headers "Content-Type=application/json" | Out-Null
+    Remove-Item $tmp.FullName -Force
+}
+
+# 4. Create a client secret
+$secret = az ad app credential reset --id $appId --display-name 'lib-upload' `
+    --years 1 --query password -o tsv
+$tenant = az account show --query tenantId -o tsv
+
+# 5. Get a Defender API token
+# GCCH login host = login.microsoftonline.us; commercial = login.microsoftonline.com
+$loginHost = 'login.microsoftonline.us'
+$apiHost   = 'api-gov.securitycenter.microsoft.us'   # commercial: api.securitycenter.microsoft.com
+$resource  = 'https://securitycenter.onmicrosoft.com/windowsatpservice'
+$tokenResp = Invoke-RestMethod -Method POST `
+    -Uri "https://$loginHost/$tenant/oauth2/v2.0/token" `
+    -ContentType 'application/x-www-form-urlencoded' `
+    -Body @{ client_id=$appId; client_secret=$secret;
+             scope="$resource/.default"; grant_type='client_credentials' }
+$token = $tokenResp.access_token
+
+# 6. Upload the EXE via multipart POST
+$filePath = 'C:\path\to\CyberTriageCollector.exe'
+$boundary = [Guid]::NewGuid().ToString()
+$LF       = "`r`n"
+$ms       = New-Object System.IO.MemoryStream
+$bw       = New-Object System.IO.BinaryWriter($ms)
+function Add-Field([string]$n,[string]$v){
+    $bw.Write([Text.Encoding]::UTF8.GetBytes(
+        "--$boundary$LF" +
+        "Content-Disposition: form-data; name=`"$n`"$LF$LF$v$LF"))
+}
+Add-Field 'HasParameters' 'false'
+Add-Field 'OverrideIfExists' 'true'
+Add-Field 'Description' 'CyberTriage collector binary'
+$bw.Write([Text.Encoding]::UTF8.GetBytes(
+    "--$boundary$LF" +
+    "Content-Disposition: form-data; name=`"file`"; " +
+    "filename=`"$([IO.Path]::GetFileName($filePath))`"$LF" +
+    "Content-Type: application/octet-stream$LF$LF"))
+$bw.Write([IO.File]::ReadAllBytes($filePath))
+$bw.Write([Text.Encoding]::UTF8.GetBytes("$LF--$boundary--$LF"))
+$bw.Flush()
+$req = [Net.HttpWebRequest]::Create("https://$apiHost/api/libraryfiles")
+$req.Method = 'POST'
+$req.ContentType = "multipart/form-data; boundary=$boundary"
+$req.Headers.Add('Authorization', "Bearer $token")
+$req.Timeout = 300000; $req.ReadWriteTimeout = 300000
+$rs = $req.GetRequestStream(); $rs.Write($ms.ToArray(),0,$ms.Length); $rs.Close()
+$resp = $req.GetResponse()
+(New-Object IO.StreamReader($resp.GetResponseStream())).ReadToEnd()
+
+# 7. Verify
+Invoke-RestMethod -Uri "https://$apiHost/api/libraryfiles" `
+    -Headers @{ Authorization = "Bearer $token" } |
+    Select-Object -ExpandProperty value |
+    Select-Object fileName, sha256, sizeInBytes
+
+# 8. Cleanup — delete the app once the file is in the Library
+az ad app delete --id $appId
+```
+
+A successful upload returns HTTP 200 and a JSON body containing the file's
+SHA256. If you get **403 Forbidden** with `Library.Manage` listed in the
+required roles, wait a minute and re-run from step 5 — the role assignment
+hasn't propagated to your token yet.
+
+</details>
+
 </details>
 
 <details>
