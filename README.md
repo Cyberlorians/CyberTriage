@@ -33,16 +33,26 @@ flowchart TD
 
 Step by step:
 
-1. An analyst (or incident automation) marks a device for collection.
-2. The device is added to the `ForensicCollectQueue` Sentinel watchlist.
-3. `Check-CyberTriageQueue` waits until the device is active in MDE.
-4. `CyberTriage-LiveResponse-Collection` asks the SAS broker for a short-lived
-   user-delegation SAS URL.
-5. MDE Live Response runs `Run-CyberTriage.ps1` on the endpoint, which calls
-   `CyberTriageCollector.exe`.
-6. The endpoint streams the encrypted artifact directly to Blob Storage using
-   the SAS URL.
-7. The MDE tag is removed and the watchlist item is deleted or updated.
+1. **Tag a device.** An analyst (or an incident automation playbook) tags the
+   device in Microsoft Defender for Endpoint with `ForensicCollect`.
+2. **Enqueue the device.** `Set-CyberTriage` adds a row to the
+   `ForensicCollectQueue` Sentinel watchlist with the MDE device ID, the
+   incident ID, and the tag name.
+3. **Wait for the device.** `Check-CyberTriageQueue` runs on a recurrence and
+   only picks rows whose device has reported recent telemetry to MDE. Offline
+   or stale devices stay in the queue.
+4. **Get a one-time SAS URL.** `CyberTriage-LiveResponse-Collection` calls the
+   SAS broker Function. The broker uses its managed identity to mint a
+   short-lived user-delegation SAS for the evidence container. No storage
+   account key is ever issued.
+5. **Run on the endpoint.** The collection workflow starts an MDE Live
+   Response session that uploads `Run-CyberTriage.ps1` and
+   `CyberTriageCollector.exe` from the MDE Library, then runs the wrapper.
+6. **Upload directly to Blob.** The collector encrypts the artifact and
+   streams it to the evidence storage account using the SAS URL. Nothing is
+   staged on disk longer than needed.
+7. **Clean up.** The workflow removes the MDE tag and deletes (or updates) the
+   watchlist row so the same device is not collected twice.
 
 ---
 
@@ -105,12 +115,12 @@ Azure RBAC assignments that ARM is allowed to create
 
 #### Subscription, Resource Group, And Region
 
-| Portal Field | What To Put | Commercial Example | GCCH Example |
-|---|---|---|---|
-| Subscription | Subscription where CyberTriage resources will be created. | `<playbook-subscription-guid>` | `99c69aca-874f-48fe-ab6c-3e0f88f205f1` |
-| Resource group | New or existing resource group for CyberTriage. | `rg-cybertriage` | `rg-cybertriage-gcch` |
-| Region | Region for the CyberTriage resources. | `East US` | `(US) USGov Virginia` |
-| Location | Generated value matching the region. | `eastus` | `usgovvirginia` |
+| Portal Field | What To Put |
+|---|---|
+| Subscription | Subscription where CyberTriage resources will be created. **Use the same subscription that contains the Sentinel workspace.** |
+| Resource group | New or existing resource group for CyberTriage. |
+| Region | Region for the CyberTriage resources. Pick a region your subscription has Functions Consumption quota in. |
+| Location | Generated value matching the region. |
 
 #### Broker Shared Secret
 
@@ -121,27 +131,24 @@ paste the existing value into this field.
 
 #### Function And Storage Names
 
-| Portal Field | What To Put | Example |
-|---|---|---|
-| Sas Broker Function App Name | Globally unique Function App name for the SAS broker. | `func-ct-sas-contoso` |
-| Function Host Storage Account Name | Storage account used internally by Azure Functions. | `stcthostcontoso01` |
-| Sas Broker Package Uri | Keep the default unless hosting the package yourself. | `https://raw.githubusercontent.com/Cyberlorians/CyberTriage/main/packages/SasBrokerNode.zip` |
-| Destination Storage Account Name | Evidence storage account for encrypted Cyber Triage output. | `stctresultscontoso01` |
-| Target Device Tag | MDE device tag used to mark devices for collection. | `ForensicCollect` |
+| Portal Field | What To Put |
+|---|---|
+| Sas Broker Function App Name | Globally unique Function App name for the SAS broker. |
+| Function Host Storage Account Name | Storage account used internally by Azure Functions. |
+| Sas Broker Package Uri | Keep the default unless hosting the package yourself. |
+| Destination Storage Account Name | Evidence storage account for encrypted Cyber Triage output. |
+| Target Device Tag | MDE device tag used to mark devices for collection. Default: `ForensicCollect`. |
 
 Storage account name rules: lowercase letters and numbers only, 3-24
 characters, globally unique, no dashes, no underscores.
 
 #### Notification Email (Optional)
 
-| If You Want Email | If You Do Not Want Email |
-|---|---|
-| Enter a security mailbox. | Leave blank. |
-| Commercial example: `security-team@contoso.com` | The workflow skips the email action. |
-| GCCH example: `security-team@contoso.us` | |
+Leave blank to skip email. Enter a monitored security mailbox to get a
+notification when a collection is dispatched.
 
 If used, the Office 365 connection still needs manual user authorization after
-deployment.
+deployment (covered in Step 3).
 
 #### Sentinel Workspace Values
 
@@ -150,17 +157,10 @@ resource ID and it does not take only the workspace GUID.
 
 | Portal Field | Where To Find It |
 |---|---|
-| Sentinel Workspace Subscription Id | The subscription that contains the Sentinel workspace. |
+| Sentinel Workspace Subscription Id | The subscription that contains the Sentinel workspace. Should match the deploy subscription. |
 | Sentinel Workspace Resource Group | The resource group of the Log Analytics workspace that has Sentinel enabled. |
 | Sentinel Workspace Name | The Log Analytics workspace name. |
 | Sentinel Workspace Customer Id | Workspace ID / customer ID GUID from the workspace Overview page. |
-
-| Portal Field | Commercial Example | GCCH Example |
-|---|---|---|
-| Sentinel Workspace Subscription Id | `<sentinel-subscription-guid>` | `99c69aca-874f-48fe-ab6c-3e0f88f205f1` |
-| Sentinel Workspace Resource Group | `rg-sentinel-prod` | `Sentinel` |
-| Sentinel Workspace Name | `law-sentinel-prod` | `dibsecus` |
-| Sentinel Workspace Customer Id | `<workspace-guid>` | `5714fa24-7a6b-4304-9d42-a0173a2eaede` |
 
 #### Cloud-Specific Endpoint Defaults
 
