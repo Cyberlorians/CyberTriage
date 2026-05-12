@@ -1,22 +1,23 @@
 # CyberTriage Deployment Guide
 
-This is the single deployment guide for both clouds. Pick your cloud in the top
-table, then follow the steps. Any field that is different between Commercial
-Azure and Azure Government / GCC High is shown side by side.
+One guide for both clouds. Any field that differs between Commercial Azure and
+Azure Government / GCC High is shown side by side.
 
-## Step 0. Pick Your Cloud And Click Deploy
+---
+
+## Deployment
+
+### Step 1. Click Deploy
+
+Pick your cloud and click the matching button. Both buttons load the same form
+in the matching portal.
 
 | Commercial Azure | Azure Government / GCC High |
 |---|---|
 | Portal: `https://portal.azure.com` | Portal: `https://portal.azure.us` |
 | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcybertriage-full-deployment.json) | [![Deploy to Azure Government](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fgcch%2Fcybertriage-full-deployment.json) |
-| Use if the tenant is in commercial Azure. | Use if the tenant is in GCC High. |
 
-If you click the wrong one, the portal URL will say so. Stop and switch.
-
-## What This Deploys
-
-The full deployment button creates these Azure resources in one resource group:
+The full deployment creates these resources in the resource group you select:
 
 ```text
 Evidence storage account
@@ -29,120 +30,57 @@ Check-CyberTriageQueue Logic App
 Azure RBAC assignments that ARM is allowed to create
 ```
 
-The deployment does not finish the whole product by itself. After ARM finishes
-you still grant Defender for Endpoint app roles, check API connections, create
-or verify the Sentinel watchlist, upload Live Response files, test the broker,
-and then test one device.
-
-## Before You Start
-
-You need these things ready before clicking the button:
-
-```text
-1. Azure subscription access (commercial or Azure Government).
-2. A Microsoft Sentinel workspace.
-3. Microsoft Defender for Endpoint in the same tenant.
-4. Permission to create resources in the playbook resource group.
-5. Permission to assign Azure RBAC roles, or an admin who can run the permission script later.
-6. Permission to grant MDE app roles, or an Entra admin who can do it later.
-7. The Cyber Triage collector executable for the Live Response Library.
-```
-
-## Step 1. Open The Deployment Button
-
-| Commercial | GCCH |
-|---|---|
-| Open the Commercial button in Step 0 from `https://portal.azure.com`. | Open the GCCH button in Step 0 from `https://portal.azure.us`. |
-
-## Step 2. Subscription, Resource Group, And Region
-
-Same fields in both clouds. Only the example region differs.
+#### Subscription, Resource Group, And Region
 
 | Portal Field | What To Put | Commercial Example | GCCH Example |
 |---|---|---|---|
-| Subscription | The subscription where CyberTriage resources will be created. | `<playbook-subscription-guid>` | `99c69aca-874f-48fe-ab6c-3e0f88f205f1` |
+| Subscription | Subscription where CyberTriage resources will be created. | `<playbook-subscription-guid>` | `99c69aca-874f-48fe-ab6c-3e0f88f205f1` |
 | Resource group | New or existing resource group for CyberTriage. | `rg-cybertriage` | `rg-cybertriage-gcch` |
 | Region | Region for the CyberTriage resources. | `East US` | `(US) USGov Virginia` |
 | Location | Generated value matching the region. | `eastus` | `usgovvirginia` |
 
-The CyberTriage resource group does not have to be the Sentinel workspace
-resource group. Keeping them separate is normal.
+#### Broker Shared Secret
 
-## Step 3. Broker Shared Secret (Leave It Alone)
+Leave blank. The template auto-generates the secret with `newGuid()` and wires
+it into both the Function app setting and the Logic App URL in the same
+deployment, so they always match. To keep the same secret across redeploys,
+paste the existing value into this field.
 
-```text
-Broker Shared Secret = leave blank
-```
-
-The template auto-generates this with ARM `newGuid()`. The same value is wired
-into the Function app setting and the Logic App URL in the same deployment, so
-they always match.
-
-If you redeploy later and leave the field blank, ARM regenerates a new GUID.
-Both sides get refreshed in the same deployment so they stay in sync. If you
-want the same secret across redeploys, paste the existing value into the field.
-
-## Step 4. Function And Storage Names
-
-Same fields in both clouds. The template generates defaults you can keep.
-
-Storage account name rules:
-
-```text
-Lowercase letters and numbers only
-3 to 24 characters
-Globally unique
-No dashes
-No underscores
-```
+#### Function And Storage Names
 
 | Portal Field | What To Put | Example |
 |---|---|---|
 | Sas Broker Function App Name | Globally unique Function App name for the SAS broker. | `func-ct-sas-contoso` |
-| Function Host Storage Account Name | Storage account used internally by Azure Functions. Not evidence storage. | `stcthostcontoso01` |
-| Sas Broker Package Uri | Keep the default unless you host the package yourself. | `https://raw.githubusercontent.com/Cyberlorians/CyberTriage/main/packages/SasBrokerNode.zip` |
+| Function Host Storage Account Name | Storage account used internally by Azure Functions. | `stcthostcontoso01` |
+| Sas Broker Package Uri | Keep the default unless hosting the package yourself. | `https://raw.githubusercontent.com/Cyberlorians/CyberTriage/main/packages/SasBrokerNode.zip` |
 | Destination Storage Account Name | Evidence storage account for encrypted Cyber Triage output. | `stctresultscontoso01` |
 | Target Device Tag | MDE device tag used to mark devices for collection. | `ForensicCollect` |
 
-The deployment creates this blob container inside the destination storage
-account:
+Storage account name rules: lowercase letters and numbers only, 3-24
+characters, globally unique, no dashes, no underscores.
 
-```text
-cybertriage-results
-```
-
-## Step 5. Notification Email (Optional)
-
-Optional. Leave blank to skip email.
+#### Notification Email (Optional)
 
 | If You Want Email | If You Do Not Want Email |
 |---|---|
-| Enter a security mailbox. | Leave the field blank. |
+| Enter a security mailbox. | Leave blank. |
 | Commercial example: `security-team@contoso.com` | The workflow skips the email action. |
 | GCCH example: `security-team@contoso.us` | |
 
 If used, the Office 365 connection still needs manual user authorization after
 deployment.
 
-## Step 6. Sentinel Workspace Values
+#### Sentinel Workspace Values
 
-The form takes **four separate fields**. It does not take a single workspace
+The form takes four separate fields. It does not take a single workspace
 resource ID and it does not take only the workspace GUID.
 
 | Portal Field | Where To Find It |
 |---|---|
-| Sentinel Workspace Subscription Id | The subscription that contains the Sentinel workspace. May be different from the playbook subscription. |
+| Sentinel Workspace Subscription Id | The subscription that contains the Sentinel workspace. |
 | Sentinel Workspace Resource Group | The resource group of the Log Analytics workspace that has Sentinel enabled. |
-| Sentinel Workspace Name | The Log Analytics workspace name (not the Sentinel display label). |
-| Sentinel Workspace Customer Id | Workspace ID / customer ID GUID from the Log Analytics workspace Overview page. |
-
-How to look them up:
-
-| Commercial | GCCH |
-|---|---|
-| `https://portal.azure.com` -> Log Analytics workspaces -> open the Sentinel workspace. | `https://portal.azure.us` -> Log Analytics workspaces -> open the Sentinel workspace. |
-
-Example values for the validation tenant used while writing this guide:
+| Sentinel Workspace Name | The Log Analytics workspace name. |
+| Sentinel Workspace Customer Id | Workspace ID / customer ID GUID from the workspace Overview page. |
 
 | Portal Field | Commercial Example | GCCH Example |
 |---|---|---|
@@ -151,25 +89,9 @@ Example values for the validation tenant used while writing this guide:
 | Sentinel Workspace Name | `law-sentinel-prod` | `dibsecus` |
 | Sentinel Workspace Customer Id | `<workspace-guid>` | `5714fa24-7a6b-4304-9d42-a0173a2eaede` |
 
-### If Sentinel Is In A Different Subscription
+#### Cloud-Specific Endpoint Defaults
 
-Same tenant only. Cross-tenant is not supported by this template path.
-
-If Sentinel is outside the subscription you selected at the top of the form,
-change `Sentinel Workspace Subscription Id` to the Sentinel subscription. The
-deployer needs:
-
-```text
-CyberTriage playbook subscription:
-  Create resources, assign RBAC on Function host and evidence storage.
-
-Sentinel workspace subscription:
-  Assign RBAC on the Sentinel Log Analytics workspace.
-```
-
-## Step 7. Cloud-Specific Endpoint Defaults
-
-These are pre-filled per cloud. Do not change them unless you know why.
+Pre-filled per cloud. Do not change unless you know why.
 
 | Portal Field | Commercial Default | GCCH Default |
 |---|---|---|
@@ -179,14 +101,11 @@ These are pre-filled per cloud. Do not change them unless you know why.
 | Arm Audience | `https://management.azure.com/` | `https://management.usgovcloudapi.net/` |
 | Storage Blob Dns Suffix | `blob.core.windows.net` | `blob.core.usgovcloudapi.net` |
 | Storage Token Resource | `https://storage.azure.com/` | `https://storage.azure.com/` |
-| Template Base Uri | Keep default. | Keep default. |
 
-For regular GCC, not GCC High, the Defender API endpoint is normally
+For regular GCC (not GCC High), the Defender API endpoint is normally
 `https://api-gcc.securitycenter.microsoft.us`.
 
-## Step 8. Other Defaults
-
-Same in both clouds.
+#### Other Defaults
 
 | Portal Field | Default |
 |---|---|
@@ -196,25 +115,57 @@ Same in both clouds.
 | Poll Frequency Minutes | `60` |
 | Online Window Minutes | `60` |
 
-## Step 9. Review And Create
+#### Review And Create
 
-```text
-1. Select Review + create.
-2. Wait for validation.
-3. If validation passes, select Create.
-4. Wait for deployment to finish.
+Select **Review + create**, wait for validation to pass, then select **Create**.
+Wait for `Deployment status: Succeeded`. If it fails, expand the failed nested
+deployment in Deployment details to see the real error.
+
+---
+
+### Step 2. Run The Permission Script
+
+> **A Microsoft Entra Global Administrator or Application Administrator must
+> run this step.** The script grants Microsoft Defender for Endpoint
+> application roles to the Logic App managed identities. ARM cannot do this on
+> its own because the roles live in Microsoft Entra ID on the
+> WindowsDefenderATP enterprise application.
+
+Download the script:
+
+[scripts/Grant-CyberTriageDefenderRoles.ps1](../scripts/Grant-CyberTriageDefenderRoles.ps1)
+
+Run it from a PowerShell session signed in to the same tenant. No parameters
+required:
+
+```powershell
+# Commercial
+az login
+.\Grant-CyberTriageDefenderRoles.ps1
 ```
 
-Expected:
-
-```text
-Deployment status: Succeeded
+```powershell
+# GCC High
+az cloud set --name AzureUSGovernment
+az login
+.\Grant-CyberTriageDefenderRoles.ps1
 ```
 
-If deployment fails, expand the failed nested deployment in Deployment details
-to find the real error.
+The script grants:
 
-## Step 10. Confirm Resources Exist
+| Logic App Managed Identity | MDE App Roles Granted |
+|---|---|
+| `Set-CyberTriage` | `Machine.ReadWrite.All` |
+| `CyberTriage-LiveResponse-Collection` | `Machine.Read.All`, `Machine.ReadWrite.All`, `Machine.LiveResponse` |
+| `Check-CyberTriageQueue` | None (does not call MDE) |
+
+The script is idempotent. Running it again only adds missing roles.
+
+---
+
+## Verification
+
+### Step 3. Confirm Resources Exist
 
 In the CyberTriage resource group, confirm:
 
@@ -237,9 +188,9 @@ Blob container in evidence storage:
 
 Do not enable `Check-CyberTriageQueue` yet.
 
-## Step 11. Save Deployment Output Values
+### Step 4. Save Deployment Output Values
 
-Save these from the deployment Outputs blade:
+From the deployment Outputs blade, save:
 
 ```text
 sasBrokerFunctionAppName
@@ -250,82 +201,9 @@ setLogicAppName
 queueLogicAppName
 ```
 
-## Step 12. Grant Azure RBAC And MDE App Roles
+### Step 5. Check API Connections
 
-ARM can create Azure RBAC only when the deployer has rights to do so. ARM
-cannot grant Microsoft Defender for Endpoint application roles by itself.
-
-| Commercial | GCCH |
-|---|---|
-| Run the script in a normal PowerShell session signed in to commercial Azure. | Run the script in a PowerShell session signed in to Azure Government. |
-
-```powershell
-.\scripts\Grant-CyberTriagePermissions.ps1 `
-  -SubscriptionId '<playbook-subscription-guid>' `
-  -PlaybookResourceGroup '<cybertriage-resource-group>' `
-  -SentinelResourceGroup '<sentinel-workspace-resource-group>' `
-  -SentinelWorkspaceName '<sentinel-workspace-name>' `
-  -EvidenceStorageResourceGroup '<cybertriage-resource-group>' `
-  -EvidenceStorageAccountName '<destination-storage-account-name>' `
-  -FunctionHostStorageResourceGroup '<cybertriage-resource-group>' `
-  -FunctionHostStorageAccountName '<function-host-storage-account-name>' `
-  -SasBrokerFunctionAppName '<sas-broker-function-app-name>'
-```
-
-The script grants these Azure RBAC permissions:
-
-```text
-SAS broker Function App managed identity, evidence storage:
-  Storage Blob Delegator
-  Storage Blob Data Contributor
-
-SAS broker Function App managed identity, Function host storage:
-  Storage Blob Data Contributor
-  Storage Queue Data Contributor
-  Storage Table Data Contributor
-
-Set-CyberTriage managed identity, Sentinel workspace:
-  Microsoft Sentinel Contributor
-
-Check-CyberTriageQueue managed identity, Sentinel workspace:
-  Log Analytics Reader
-  Microsoft Sentinel Contributor
-
-CyberTriage-LiveResponse-Collection managed identity, Sentinel workspace:
-  Microsoft Sentinel Contributor
-```
-
-The script also grants these MDE app roles unless `-SkipDefenderAppRoles` is
-used:
-
-```text
-Set-CyberTriage managed identity:
-  Machine.ReadWrite.All
-
-CyberTriage-LiveResponse-Collection managed identity:
-  Machine.Read.All
-  Machine.ReadWrite.All
-  Machine.LiveResponse
-
-Check-CyberTriageQueue managed identity:
-  No MDE app roles
-```
-
-If a different admin owns Entra app roles, run the script with
-`-SkipDefenderAppRoles` and have the Entra admin grant MDE app roles manually
-on the WindowsDefenderATP enterprise app.
-
-## Step 13. Check API Connections
-
-Open each Logic App in the same portal you deployed from.
-
-Check API connections for these connectors:
-
-```text
-azuresentinel-*
-azuremonitorlogs-*
-office365-*
-```
+Open each Logic App and check these API connections:
 
 | Connection | Expected Auth | Notes |
 |---|---|---|
@@ -333,10 +211,10 @@ office365-*
 | `azuremonitorlogs-*` | Managed identity | Used by the queue checker to query Watchlist and DeviceInfo. |
 | `office365-*` | User authorization, optional | Needed only if `NotificationEmail` was filled in. |
 
-MDE is not authorized through a WDATP connector. MDE calls use raw HTTP
-actions with the Logic App managed identity.
+MDE is not authorized through a WDATP connector. MDE calls use raw HTTP actions
+with the Logic App managed identity.
 
-## Step 14. Create Or Verify The Sentinel Watchlist
+### Step 6. Create Or Verify The Sentinel Watchlist
 
 In Microsoft Sentinel, create or verify this watchlist alias:
 
@@ -344,26 +222,13 @@ In Microsoft Sentinel, create or verify this watchlist alias:
 ForensicCollectQueue
 ```
 
-Starter CSV:
+Starter CSV: [../assets/watchlists/ForensicCollectQueue.csv](../assets/watchlists/ForensicCollectQueue.csv)
 
-[../assets/watchlists/ForensicCollectQueue.csv](../assets/watchlists/ForensicCollectQueue.csv)
+Important columns: `MdatpDeviceId`, `DeviceName`, `IncidentId`, `TagName`,
+`EnqueuedTime`, `Attempts`, `Status`, `RetryAfterUtc`. Blank `Status` is valid
+and is treated as pending.
 
-Important columns:
-
-```text
-MdatpDeviceId
-DeviceName
-IncidentId
-TagName
-EnqueuedTime
-Attempts
-Status
-RetryAfterUtc
-```
-
-Blank `Status` is valid. The queue checker treats blank status as pending.
-
-## Step 15. Upload MDE Live Response Library Files
+### Step 7. Upload MDE Live Response Library Files
 
 In Microsoft Defender for Endpoint, upload these exact file names to the Live
 Response Library:
@@ -373,13 +238,9 @@ CyberTriageCollector.exe
 Run-CyberTriage.ps1
 ```
 
-The wrapper script is here:
+The wrapper script: [../src/LiveResponse/Run-CyberTriage.ps1](../src/LiveResponse/Run-CyberTriage.ps1)
 
-[../src/LiveResponse/Run-CyberTriage.ps1](../src/LiveResponse/Run-CyberTriage.ps1)
-
-The names must match exactly.
-
-## Step 16. Test The Broker Health Endpoint
+### Step 8. Test The Broker Health Endpoint
 
 Open the `sasBrokerHealthUrl` deployment output in a browser.
 
@@ -387,39 +248,24 @@ Open the `sasBrokerHealthUrl` deployment output in a browser.
 |---|---|
 | `https://<function-app-name>.azurewebsites.net/api/health` | `https://<function-app-name>.azurewebsites.us/api/health` |
 
-Expected response:
+Expected:
 
 ```json
 { "status": "ok" }
 ```
 
-If `404`, wait a minute and refresh. If still failing, check the Function App
-package and app settings.
+### Step 9. Test SAS Generation
 
-## Step 17. Test SAS Generation
-
-Use a secure admin shell. Do not paste the returned SAS URL into tickets, chat,
-or screenshots.
-
-POST to the broker URL with the broker secret. The returned `sasUrl` should
-start like this:
+POST to the broker URL with the broker secret. Returned `sasUrl` should start:
 
 | Commercial | GCCH |
 |---|---|
 | `https://<destination-storage-account>.blob.core.windows.net/cybertriage-results?` | `https://<destination-storage-account>.blob.core.usgovcloudapi.net/cybertriage-results?` |
 
-## Step 18. Run One Controlled Device Test
+### Step 10. Run One Controlled Device Test
 
-Pick one device that is active in MDE. The device must be:
-
-```text
-Onboarded to MDE
-Recently seen by MDE
-Able to run Live Response
-Allowed to receive CyberTriageCollector.exe and Run-CyberTriage.ps1
-```
-
-Test flow:
+Pick one onboarded MDE device that has been recently seen and can run Live
+Response.
 
 ```text
 1. Add or enqueue the device for collection.
@@ -431,15 +277,11 @@ Test flow:
 7. Confirm the watchlist item is deleted or updated.
 ```
 
-Expected blob name pattern:
+Expected blob name pattern: `cttout_<device>_<timestamp>.json.gz.enc.01`
 
-```text
-cttout_<device>_<timestamp>.json.gz.enc.01
-```
+### Step 11. Enable The Queue Checker
 
-## Step 19. Enable The Queue Checker
-
-Only enable after one controlled test works.
+Only after one controlled test works:
 
 ```text
 1. Open Logic Apps.
@@ -448,13 +290,14 @@ Only enable after one controlled test works.
 4. Select Enable.
 ```
 
+---
+
 ## Troubleshooting Quick Checks
 
 ### Deployment Fails At Sentinel RBAC
 
 Check whether the deployer has permission on the Sentinel workspace
-subscription and resource group. If not, deploy resources first and run the
-permission script after with an admin who does.
+subscription and resource group.
 
 ### Broker Health Returns 404
 
@@ -467,7 +310,7 @@ Function host storage role assignments are in place
 
 ### MDE Calls Return 403
 
-Check the MDE app roles on the Logic App managed identities:
+Re-run `Grant-CyberTriageDefenderRoles.ps1` and confirm:
 
 ```text
 Set-CyberTriage:
@@ -484,28 +327,11 @@ CyberTriage-LiveResponse-Collection:
 The device must be active in MDE with recent `DeviceInfo` telemetry in the
 Sentinel workspace. A running VM is not enough.
 
-## Cleanup After A Test
-
-If this was only a test, delete only the CyberTriage test resource group you
-created.
-
-Do not delete:
-
-```text
-The customer Sentinel workspace
-Existing customer watchlists
-Existing Defender configuration
-Production evidence storage
-```
-
-If the deployment assigned Sentinel workspace RBAC to test managed identities,
-remove those role assignments before deleting the test resource group when
-possible. After managed identities are deleted, orphaned role assignments are
-harder to identify.
+---
 
 ## Individual Deployment Buttons
 
-Use these only when deploying pieces separately.
+Use only when deploying pieces separately.
 
 | Component | Commercial | GCCH |
 |---|---|---|
