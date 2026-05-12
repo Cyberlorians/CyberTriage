@@ -96,6 +96,16 @@ This is a random secret used by the collection Logic App when it calls the SAS
 broker Function. It is not a storage key, not an MDE secret, and not your user
 password.
 
+What to put in the ARM field:
+
+```text
+Broker Shared Secret = paste the full one-line output from the PowerShell command below
+```
+
+Do not leave this blank. Do not type the words `Broker Shared Secret`. Do not
+use a storage account key. Do not use your password. The Azure portal may hide
+the value because this is a secure string field; that is normal.
+
 Generate one before filling in the form.
 
 In PowerShell, run:
@@ -109,6 +119,10 @@ Copy the output and paste it into:
 ```text
 Broker Shared Secret
 ```
+
+If PowerShell is not available, use a password generator and create a random
+secret at least 64 characters long. Paste that random value into `Broker Shared
+Secret`.
 
 Save the value in a secure password vault. You will need it only if you later
 need to rebuild or troubleshoot the broker URL.
@@ -263,7 +277,7 @@ name is already taken.
 | Region | `(US) USGov Virginia` |
 | Sas Broker Function App Name | `func-ct-sas-<unique-suffix>` |
 | Function Host Storage Account Name | `stcthost<uniquesuffix>` |
-| Broker Shared Secret | Paste the generated PowerShell output from Step 3. |
+| Broker Shared Secret | Paste the full one-line random value generated in Step 3. The field may hide the value. |
 | Sas Broker Package Uri | Keep the default. |
 | Destination Storage Account Name | `stctresults<uniquesuffix>` |
 | Target Device Tag | `ForensicCollect` |
