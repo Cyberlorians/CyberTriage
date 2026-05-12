@@ -46,6 +46,35 @@ Step by step:
 
 ---
 
+## Requirements
+
+Before you deploy, line up two roles. They are usually two different people.
+
+### Who Deploys The ARM Template (Step 1)
+
+| Required | Why |
+|---|---|
+| **`Owner`** on the target Azure subscription. | The template creates resources, assigns Azure RBAC to managed identities, and writes role assignments on the Sentinel workspace. `Contributor` is not enough — it cannot create role assignments. |
+| Deploy into **the same subscription that contains your Microsoft Sentinel workspace**. | The template wires the playbook managed identities to the Sentinel workspace by name. Cross-subscription is supported but Owner is then required on both subscriptions. Same-subscription is simpler. |
+| Microsoft Defender for Endpoint enabled in the same tenant, with at least one onboarded device. | The collection workflow calls the MDE API and runs Live Response. |
+
+### Who Runs The Permission Script (Step 2)
+
+| Required | Why |
+|---|---|
+| **Microsoft Entra Global Administrator** *or* **Application Administrator** *or* **Cloud Application Administrator** *or* **Privileged Role Administrator**. | The script grants Microsoft Defender for Endpoint application roles to the Logic App managed identities on the WindowsDefenderATP enterprise app. Only an Entra admin role can do that — ARM cannot. |
+
+### Other Things You Need
+
+```text
+Cyber Triage collector binary (CyberTriageCollector.exe) from the vendor
+Permission to upload files to the MDE Live Response Library
+Permission to create a Sentinel watchlist in the target workspace
+A test device that is onboarded to MDE and recently active
+```
+
+---
+
 ## Deployment
 
 One guide for both clouds. Any field that differs between Commercial Azure and
