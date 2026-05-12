@@ -271,32 +271,16 @@ If you left the email blank, skip this step.
 <details>
 <summary><b>Step 4. Upload The MDE Live Response Library Files</b></summary>
 
-Upload both files to the Microsoft Defender for Endpoint Live Response
-Library. The names must match exactly.
+Two files must exist in the MDE Live Response Library. The names must match
+exactly.
 
-```text
-CyberTriageCollector.exe
-Run-CyberTriage.ps1
-```
+| File | Where To Get It |
+|---|---|
+| `Run-CyberTriage.ps1` | [src/LiveResponse/Run-CyberTriage.ps1](src/LiveResponse/Run-CyberTriage.ps1) in this repo. |
+| `CyberTriageCollector.exe` | From Cyber Triage (vendor binary, not redistributed in this repo). |
 
-The wrapper script is in this repo:
-[src/LiveResponse/Run-CyberTriage.ps1](src/LiveResponse/Run-CyberTriage.ps1)
-
-How to upload in the Microsoft Defender portal:
-
-```text
-1. Open https://security.microsoft.com  (GCCH: https://security.microsoft.us)
-2. Settings -> Endpoints -> Advanced features.
-3. Confirm Live Response is on for servers and clients as needed.
-4. Select any onboarded device -> Initiate Live Response Session.
-5. In the Live Response console, select the Library icon (top right).
-6. Select Upload file to library.
-7. Upload CyberTriageCollector.exe. Add a description. Select Confirm.
-8. Repeat: Upload file to library -> Run-CyberTriage.ps1 -> Confirm.
-9. Close the Live Response session.
-```
-
-The two files are now available to every Live Response session in the tenant.
+Upload both in the Microsoft Defender portal under **Settings → Endpoints →
+Live response → Library**.
 
 </details>
 
