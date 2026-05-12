@@ -115,7 +115,10 @@ Check-CyberTriageQueue Logic App
 Azure RBAC assignments that ARM is allowed to create
 ```
 
-#### Subscription, Resource Group, And Region
+Form-field guidance is grouped below. Click any section to expand.
+
+<details>
+<summary><b>Subscription, Resource Group, And Region</b></summary>
 
 | Portal Field | What To Put |
 |---|---|
@@ -124,14 +127,20 @@ Azure RBAC assignments that ARM is allowed to create
 | Region | Region for the CyberTriage resources. Pick a region your subscription has Functions Consumption quota in. |
 | Location | Generated value matching the region. |
 
-#### Broker Shared Secret
+</details>
+
+<details>
+<summary><b>Broker Shared Secret</b></summary>
 
 Leave blank. The template auto-generates the secret with `newGuid()` and wires
 it into both the Function app setting and the Logic App URL in the same
 deployment, so they always match. To keep the same secret across redeploys,
 paste the existing value into this field.
 
-#### Function And Storage Names
+</details>
+
+<details>
+<summary><b>Function And Storage Names</b></summary>
 
 | Portal Field | What To Put |
 |---|---|
@@ -144,7 +153,10 @@ paste the existing value into this field.
 Storage account name rules: lowercase letters and numbers only, 3-24
 characters, globally unique, no dashes, no underscores.
 
-#### Notification Email (Optional)
+</details>
+
+<details>
+<summary><b>Notification Email (Optional)</b></summary>
 
 Leave blank to skip email. Enter a monitored security mailbox to get a
 notification when a collection is dispatched.
@@ -152,7 +164,10 @@ notification when a collection is dispatched.
 If used, the Office 365 connection still needs manual user authorization after
 deployment (covered in Step 3).
 
-#### Sentinel Workspace Values
+</details>
+
+<details>
+<summary><b>Sentinel Workspace Values</b></summary>
 
 The form takes four separate fields. It does not take a single workspace
 resource ID and it does not take only the workspace GUID.
@@ -164,7 +179,10 @@ resource ID and it does not take only the workspace GUID.
 | Sentinel Workspace Name | The Log Analytics workspace name. |
 | Sentinel Workspace Customer Id | Workspace ID / customer ID GUID from the workspace Overview page. |
 
-#### Cloud-Specific Endpoint Defaults
+</details>
+
+<details>
+<summary><b>Cloud-Specific Endpoint Defaults</b></summary>
 
 Pre-filled per cloud. Do not change unless you know why.
 
@@ -180,7 +198,10 @@ Pre-filled per cloud. Do not change unless you know why.
 For regular GCC (not GCC High), the Defender API endpoint is normally
 `https://api-gcc.securitycenter.microsoft.us`.
 
-#### Other Defaults
+</details>
+
+<details>
+<summary><b>Other Defaults</b></summary>
 
 | Portal Field | Default |
 |---|---|
@@ -190,11 +211,16 @@ For regular GCC (not GCC High), the Defender API endpoint is normally
 | Poll Frequency Minutes | `60` |
 | Online Window Minutes | `60` |
 
-#### Review And Create
+</details>
+
+<details>
+<summary><b>Review And Create</b></summary>
 
 Select **Review + create**, wait for validation to pass, then select **Create**.
 Wait for `Deployment status: Succeeded`. If it fails, expand the failed nested
 deployment in Deployment details to see the real error.
+
+</details>
 
 ---
 
