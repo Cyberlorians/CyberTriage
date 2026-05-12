@@ -90,9 +90,10 @@ A test device that is onboarded to MDE and recently active
 ## Deployment
 
 One guide for both clouds. Any field that differs between Commercial Azure and
-Azure Government / GCC High is shown side by side.
+Azure Government / GCC High is shown side by side. Click any step to expand.
 
-### Step 1. Click Deploy
+<details>
+<summary><b>Step 1. Click Deploy</b></summary>
 
 Pick your cloud and click the matching button. Both buttons load the same form
 in the matching portal.
@@ -115,10 +116,7 @@ Check-CyberTriageQueue Logic App
 Azure RBAC assignments that ARM is allowed to create
 ```
 
-Form-field guidance is grouped below. Click any section to expand.
-
-<details>
-<summary><b>Subscription, Resource Group, And Region</b></summary>
+**Subscription, Resource Group, And Region**
 
 | Portal Field | What To Put |
 |---|---|
@@ -127,20 +125,14 @@ Form-field guidance is grouped below. Click any section to expand.
 | Region | Region for the CyberTriage resources. Pick a region your subscription has Functions Consumption quota in. |
 | Location | Generated value matching the region. |
 
-</details>
-
-<details>
-<summary><b>Broker Shared Secret</b></summary>
+**Broker Shared Secret**
 
 Leave blank. The template auto-generates the secret with `newGuid()` and wires
 it into both the Function app setting and the Logic App URL in the same
 deployment, so they always match. To keep the same secret across redeploys,
 paste the existing value into this field.
 
-</details>
-
-<details>
-<summary><b>Function And Storage Names</b></summary>
+**Function And Storage Names**
 
 | Portal Field | What To Put |
 |---|---|
@@ -153,10 +145,7 @@ paste the existing value into this field.
 Storage account name rules: lowercase letters and numbers only, 3-24
 characters, globally unique, no dashes, no underscores.
 
-</details>
-
-<details>
-<summary><b>Notification Email (Optional)</b></summary>
+**Notification Email (Optional)**
 
 Leave blank to skip email. Enter a monitored security mailbox to get a
 notification when a collection is dispatched.
@@ -164,10 +153,7 @@ notification when a collection is dispatched.
 If used, the Office 365 connection still needs manual user authorization after
 deployment (covered in Step 3).
 
-</details>
-
-<details>
-<summary><b>Sentinel Workspace Values</b></summary>
+**Sentinel Workspace Values**
 
 The form takes four separate fields. It does not take a single workspace
 resource ID and it does not take only the workspace GUID.
@@ -179,10 +165,7 @@ resource ID and it does not take only the workspace GUID.
 | Sentinel Workspace Name | The Log Analytics workspace name. |
 | Sentinel Workspace Customer Id | Workspace ID / customer ID GUID from the workspace Overview page. |
 
-</details>
-
-<details>
-<summary><b>Cloud-Specific Endpoint Defaults</b></summary>
+**Cloud-Specific Endpoint Defaults**
 
 Pre-filled per cloud. Do not change unless you know why.
 
@@ -198,10 +181,7 @@ Pre-filled per cloud. Do not change unless you know why.
 For regular GCC (not GCC High), the Defender API endpoint is normally
 `https://api-gcc.securitycenter.microsoft.us`.
 
-</details>
-
-<details>
-<summary><b>Other Defaults</b></summary>
+**Other Defaults**
 
 | Portal Field | Default |
 |---|---|
@@ -211,10 +191,7 @@ For regular GCC (not GCC High), the Defender API endpoint is normally
 | Poll Frequency Minutes | `60` |
 | Online Window Minutes | `60` |
 
-</details>
-
-<details>
-<summary><b>Review And Create</b></summary>
+**Review And Create**
 
 Select **Review + create**, wait for validation to pass, then select **Create**.
 Wait for `Deployment status: Succeeded`. If it fails, expand the failed nested
@@ -222,9 +199,8 @@ deployment in Deployment details to see the real error.
 
 </details>
 
----
-
-### Step 2. Run The Permission Script
+<details>
+<summary><b>Step 2. Run The Permission Script</b></summary>
 
 > **A Microsoft Entra Global Administrator or Application Administrator must
 > run this step.** The script grants Microsoft Defender for Endpoint
@@ -261,11 +237,16 @@ The script grants:
 
 The script is idempotent. Running it again only adds missing roles.
 
+</details>
+
 ---
 
 ## Verification
 
-### Step 3. Authorize Logic App API Connections
+Click any step to expand.
+
+<details>
+<summary><b>Step 3. Authorize Logic App API Connections</b></summary>
 
 The Sentinel and Log Analytics connections use managed identity and do not
 need user authorization. The Office 365 connection is the only one that
@@ -284,7 +265,10 @@ If you set a notification email:
 
 If you left the email blank, skip this step.
 
-### Step 4. Upload The MDE Live Response Library Files
+</details>
+
+<details>
+<summary><b>Step 4. Upload The MDE Live Response Library Files</b></summary>
 
 Upload both files to the Microsoft Defender for Endpoint Live Response
 Library. The names must match exactly.
@@ -313,7 +297,10 @@ How to upload in the Microsoft Defender portal:
 
 The two files are now available to every Live Response session in the tenant.
 
-### Step 5. Create The Sentinel Watchlist
+</details>
+
+<details>
+<summary><b>Step 5. Create The Sentinel Watchlist</b></summary>
 
 Create the `ForensicCollectQueue` watchlist in the same Sentinel workspace you
 entered during deploy. The Logic Apps read and write rows in this watchlist to
@@ -356,7 +343,10 @@ Important columns:
 
 Blank `Status` is valid and is treated as pending.
 
-### Step 6. Test The Broker Health Endpoint
+</details>
+
+<details>
+<summary><b>Step 6. Test The Broker Health Endpoint</b></summary>
 
 Open the `sasBrokerHealthUrl` deployment output in a browser.
 
@@ -370,7 +360,10 @@ Expected:
 { "status": "ok" }
 ```
 
-### Step 7. Test SAS Generation
+</details>
+
+<details>
+<summary><b>Step 7. Test SAS Generation</b></summary>
 
 POST to the broker URL with the broker secret. Returned `sasUrl` should start:
 
@@ -378,7 +371,10 @@ POST to the broker URL with the broker secret. Returned `sasUrl` should start:
 |---|---|
 | `https://<destination-storage-account>.blob.core.windows.net/cybertriage-results?` | `https://<destination-storage-account>.blob.core.usgovcloudapi.net/cybertriage-results?` |
 
-### Step 8. Run One Controlled Device Test
+</details>
+
+<details>
+<summary><b>Step 8. Run One Controlled Device Test</b></summary>
 
 Pick one onboarded MDE device that has been recently seen and can run Live
 Response.
@@ -395,7 +391,10 @@ Response.
 
 Expected blob name pattern: `cttout_<device>_<timestamp>.json.gz.enc.01`
 
-### Step 9. Enable The Queue Checker
+</details>
+
+<details>
+<summary><b>Step 9. Enable The Queue Checker</b></summary>
 
 Only after one controlled test works:
 
@@ -405,6 +404,8 @@ Only after one controlled test works:
 3. Select Overview.
 4. Select Enable.
 ```
+
+</details>
 
 ---
 
