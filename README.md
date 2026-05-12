@@ -279,6 +279,13 @@ exactly.
 | `Run-CyberTriage.ps1` | [src/LiveResponse/Run-CyberTriage.ps1](src/LiveResponse/Run-CyberTriage.ps1) in this repo. |
 | `CyberTriageCollector.exe` | From Cyber Triage (vendor binary, not redistributed in this repo). |
 
+> **Note:** `CyberTriageCollector.exe` is intentionally **not** in this
+> repository. It is a third-party vendor binary from Sleuth Kit Labs
+> distributed separately under the Cyber Triage license. Download it from
+> your Cyber Triage installation or from the vendor — do not search the
+> repo for it. Filename in the MDE Library must be exactly
+> `CyberTriageCollector.exe`.
+
 Upload both in the Microsoft Defender portal under **Settings → Endpoints →
 Live response → Library**.
 
