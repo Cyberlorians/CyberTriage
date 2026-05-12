@@ -58,6 +58,20 @@ must be granted after deployment by script or by an Entra admin.
 
 Use these values unless the customer has a reason to change them.
 
+For this validation tenant, the Sentinel workspace values discovered from Azure
+are:
+
+```text
+SentinelWorkspaceResourceGroup: Sentinel
+SentinelWorkspaceName: dibsecus
+SentinelWorkspaceCustomerId: 5714fa24-7a6b-4304-9d42-a0173a2eaede
+SentinelWorkspaceSubscriptionId: 99c69aca-874f-48fe-ab6c-3e0f88f205f1
+```
+
+For a customer tenant, do not assume the resource group is named `Sentinel`.
+Open the Log Analytics workspace that has Microsoft Sentinel enabled and copy
+the real values from that workspace.
+
 | Field | What To Enter |
 |---|---|
 | Subscription | The Azure Government subscription that contains or can reach the Sentinel workspace |
@@ -65,15 +79,15 @@ Use these values unless the customer has a reason to change them.
 | Region | `usgovvirginia`, unless the customer uses another supported Azure Government region |
 | SasBrokerFunctionAppName | Globally unique Function App name, for example `func-ct-sas-<customer>` |
 | FunctionHostStorageAccountName | Globally unique lowercase storage account name, 3-24 characters |
-| BrokerSharedSecret | Long random secret. Save it securely. It is not a storage key. |
+| BrokerSharedSecret | Long random secret that protects the broker endpoint. Generate one before deployment. It is not a storage key. |
 | SasBrokerPackageUri | Keep the default package URL unless using a customer-hosted copy of `packages/SasBrokerNode.zip` |
 | DestinationStorageAccountName | Globally unique lowercase evidence storage account name |
 | TargetDeviceTag | Usually `ForensicCollect` |
-| NotificationEmail | Security mailbox for optional Office 365 notification |
-| SentinelWorkspaceResourceGroup | Resource group containing the Sentinel Log Analytics workspace |
-| SentinelWorkspaceName | Sentinel Log Analytics workspace name |
-| SentinelWorkspaceCustomerId | Workspace customer ID / workspace GUID |
-| SentinelWorkspaceSubscriptionId | Subscription ID containing the Sentinel workspace |
+| NotificationEmail | Optional security mailbox for Office 365 notification. Leave blank if email notification is not needed. |
+| SentinelWorkspaceResourceGroup | Resource group containing the Sentinel Log Analytics workspace. This may be different from the playbook resource group. |
+| SentinelWorkspaceName | Sentinel Log Analytics workspace name, not the Sentinel portal display label. |
+| SentinelWorkspaceCustomerId | Workspace customer ID / workspace GUID from the Log Analytics workspace Overview page. |
+| SentinelWorkspaceSubscriptionId | Subscription ID containing the Sentinel workspace. If Sentinel is outside the playbook subscription, replace the default with the Sentinel subscription ID. |
 | WatchlistAlias | Usually `ForensicCollectQueue` |
 | DefenderApiBaseUri | For GCC High, keep `https://api-gov.securitycenter.microsoft.us` |
 | DefenderApiAudience | For GCC High, keep `https://api-gov.securitycenter.microsoft.us` |
@@ -85,6 +99,30 @@ Use these values unless the customer has a reason to change them.
 For regular GCC, the Defender API endpoint is usually
 `https://api-gcc.securitycenter.microsoft.us`. GCC High uses
 `https://api-gov.securitycenter.microsoft.us`.
+
+Generate `BrokerSharedSecret` with a command like this:
+
+```powershell
+[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')))
+```
+
+Copy the output into the `BrokerSharedSecret` field and store it somewhere safe.
+Do not use an Azure storage key, user password, or MDE secret for this field.
+
+If Sentinel is in a different subscription from the CyberTriage playbook
+resource group, the deployment identity needs enough access in both places:
+
+```text
+Playbook subscription/resource group:
+  Create resources and assign RBAC for the Function and Logic Apps.
+
+Sentinel workspace subscription/resource group:
+  Run the nested Sentinel RBAC deployment and assign workspace-scoped roles.
+```
+
+Cross-subscription is supported when the subscriptions are in the same tenant
+and the deployer has the required permissions. Cross-tenant Sentinel deployment
+is not supported by this template path.
 
 ## After The Button Finishes
 

@@ -19,16 +19,13 @@
       }
     },
     "SentinelWorkspaceResourceGroup": {
-      "type": "string",
-      "defaultValue": "Sentinel"
+      "type": "string"
     },
     "SentinelWorkspaceName": {
-      "type": "string",
-      "defaultValue": "<sentinel-workspace-name>"
+      "type": "string"
     },
     "SentinelWorkspaceCustomerId": {
-      "type": "string",
-      "defaultValue": "<workspace-guid>"
+      "type": "string"
     },
     "SentinelWorkspaceSubscriptionId": {
       "type": "string",

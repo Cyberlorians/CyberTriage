@@ -8,9 +8,9 @@
   },
   "parameters": {
     "location": { "type": "string", "defaultValue": "usgovvirginia" },
-    "SentinelWorkspaceResourceGroup": { "type": "string", "defaultValue": "Sentinel" },
-    "SentinelWorkspaceName": { "type": "string", "defaultValue": "<gcch-sentinel-workspace-name>" },
-    "SentinelWorkspaceCustomerId": { "type": "string", "defaultValue": "<workspace-guid>" },
+    "SentinelWorkspaceResourceGroup": { "type": "string" },
+    "SentinelWorkspaceName": { "type": "string" },
+    "SentinelWorkspaceCustomerId": { "type": "string" },
     "SentinelWorkspaceSubscriptionId": { "type": "string", "defaultValue": "[subscription().subscriptionId]" },
     "WatchlistAlias": { "type": "string", "defaultValue": "ForensicCollectQueue" },
     "PollFrequencyMinutes": { "type": "int", "defaultValue": 60 },

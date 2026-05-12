@@ -28,7 +28,7 @@
     "BrokerSharedSecret": {
       "type": "securestring",
       "metadata": {
-        "description": "Long random secret for the SAS broker. Save it securely. It is not a storage account key."
+        "description": "Long random secret for the SAS broker. Generate one before deployment, save it securely, and do not reuse a storage key or password."
       }
     },
     "SasBrokerPackageUri": {
@@ -51,25 +51,35 @@
     },
     "NotificationEmail": {
       "type": "string",
+      "defaultValue": "",
       "metadata": {
-        "description": "Email address for optional Office 365 notification."
+        "description": "Optional email address for Office 365 notification. Leave blank if email notification is not needed."
       }
     },
     "SentinelWorkspaceResourceGroup": {
       "type": "string",
-      "defaultValue": "Sentinel"
+      "metadata": {
+        "description": "Resource group that contains the Microsoft Sentinel Log Analytics workspace. Enter the actual workspace resource group name."
+      }
     },
     "SentinelWorkspaceName": {
       "type": "string",
-      "defaultValue": "<gcch-sentinel-workspace-name>"
+      "metadata": {
+        "description": "Name of the Microsoft Sentinel Log Analytics workspace."
+      }
     },
     "SentinelWorkspaceCustomerId": {
       "type": "string",
-      "defaultValue": "<workspace-guid>"
+      "metadata": {
+        "description": "Workspace customer ID / workspace GUID from the Log Analytics workspace Overview page."
+      }
     },
     "SentinelWorkspaceSubscriptionId": {
       "type": "string",
-      "defaultValue": "[subscription().subscriptionId]"
+      "defaultValue": "[subscription().subscriptionId]",
+      "metadata": {
+        "description": "Subscription ID that contains the Sentinel workspace. Change this if Sentinel is in a different subscription than the playbooks."
+      }
     },
     "WatchlistAlias": {
       "type": "string",

@@ -36,19 +36,17 @@
     },
     "NotificationEmail": {
       "type": "string",
-      "metadata": { "description": "Email address for completion notifications." }
+      "defaultValue": "",
+      "metadata": { "description": "Optional email address for completion notifications. Leave blank if email notification is not needed." }
     },
     "SentinelWorkspaceResourceGroup": {
-      "type": "string",
-      "defaultValue": "Sentinel"
+      "type": "string"
     },
     "SentinelWorkspaceName": {
-      "type": "string",
-      "defaultValue": "<sentinel-workspace-name>"
+      "type": "string"
     },
     "SentinelWorkspaceCustomerId": {
-      "type": "string",
-      "defaultValue": "<workspace-guid>"
+      "type": "string"
     },
     "SentinelWorkspaceSubscriptionId": {
       "type": "string",
@@ -423,28 +421,44 @@
                             },
                             "else": { "actions": {} }
                           },
-                          "Email_Started": {
-                            "type": "ApiConnection",
+                          "If_Notification_Email_Configured": {
+                            "type": "If",
                             "runAfter": { "Delete_Watchlist_Item_If_Queued": ["Succeeded"] },
-                            "inputs": {
-                              "host": { "connection": { "name": "@parameters('$connections')['office365']['connectionId']" } },
-                              "method": "post",
-                              "path": "/v2/Mail",
-                              "body": {
-                                "To": "@{parameters('NotificationEmail')}",
-                                "Subject": "CyberTriage Collection Started - @{items('For_Each_Tagged_Device')?['computerDnsName']}",
-                                "Body": "<h3>Forensic Collection Launched</h3><p>The Cyber Triage collector has been handed off to Defender Live Response. It runs in the background and uploads the encrypted artifact directly to blob storage with a short-lived SAS URL (typically 5&ndash;30 minutes for a workstation, longer for servers). The verification playbook will confirm successful upload separately.</p><table border='1' cellpadding='5'><tr><td><b>Device</b></td><td>@{items('For_Each_Tagged_Device')?['computerDnsName']}</td></tr><tr><td><b>Device ID</b></td><td>@{items('For_Each_Tagged_Device')?['id']}</td></tr><tr><td><b>OS</b></td><td>@{items('For_Each_Tagged_Device')?['osPlatform']}</td></tr><tr><td><b>Machine Action ID</b></td><td>@{body('Run_LR_Collection')?['id']}</td></tr><tr><td><b>Tag</b></td><td>@{variables('TagName')}</td></tr><tr><td><b>Collection Profile</b></td><td>@{variables('CollectionTypeRun')}</td></tr><tr><td><b>Incident</b></td><td>@{coalesce(variables('IncidentId'), 'N/A')}</td></tr><tr><td><b>Storage Account</b></td><td>@{parameters('DestinationStorageAccountName')}</td></tr><tr><td><b>Container</b></td><td>@{parameters('DestinationContainerName')}</td></tr><tr><td><b>SAS Expires</b></td><td>@{coalesce(body('Generate_CyberTriage_Sas')?['expiresOnUtc'], 'Runtime-generated')}</td></tr><tr><td><b>Expected Blob</b></td><td>cttout_@{items('For_Each_Tagged_Device')?['computerDnsName']}_&lt;timestamp&gt;.json.gz.enc.01</td></tr><tr><td><b>Decryption Password</b></td><td><code>infected</code> &mdash; open in Cyber Triage product</td></tr></table>",
-                                "Importance": "Normal",
-                                "IsHtml": true
+                            "expression": { "and": [{ "not": { "equals": ["@empty(parameters('NotificationEmail'))", true] } }] },
+                            "actions": {
+                              "Email_Started": {
+                                "type": "ApiConnection",
+                                "runAfter": {},
+                                "inputs": {
+                                  "host": { "connection": { "name": "@parameters('$connections')['office365']['connectionId']" } },
+                                  "method": "post",
+                                  "path": "/v2/Mail",
+                                  "body": {
+                                    "To": "@{parameters('NotificationEmail')}",
+                                    "Subject": "CyberTriage Collection Started - @{items('For_Each_Tagged_Device')?['computerDnsName']}",
+                                    "Body": "<h3>Forensic Collection Launched</h3><p>The Cyber Triage collector has been handed off to Defender Live Response. It runs in the background and uploads the encrypted artifact directly to blob storage with a short-lived SAS URL (typically 5&ndash;30 minutes for a workstation, longer for servers). The verification playbook will confirm successful upload separately.</p><table border='1' cellpadding='5'><tr><td><b>Device</b></td><td>@{items('For_Each_Tagged_Device')?['computerDnsName']}</td></tr><tr><td><b>Device ID</b></td><td>@{items('For_Each_Tagged_Device')?['id']}</td></tr><tr><td><b>OS</b></td><td>@{items('For_Each_Tagged_Device')?['osPlatform']}</td></tr><tr><td><b>Machine Action ID</b></td><td>@{body('Run_LR_Collection')?['id']}</td></tr><tr><td><b>Tag</b></td><td>@{variables('TagName')}</td></tr><tr><td><b>Collection Profile</b></td><td>@{variables('CollectionTypeRun')}</td></tr><tr><td><b>Incident</b></td><td>@{coalesce(variables('IncidentId'), 'N/A')}</td></tr><tr><td><b>Storage Account</b></td><td>@{parameters('DestinationStorageAccountName')}</td></tr><tr><td><b>Container</b></td><td>@{parameters('DestinationContainerName')}</td></tr><tr><td><b>SAS Expires</b></td><td>@{coalesce(body('Generate_CyberTriage_Sas')?['expiresOnUtc'], 'Runtime-generated')}</td></tr><tr><td><b>Expected Blob</b></td><td>cttout_@{items('For_Each_Tagged_Device')?['computerDnsName']}_&lt;timestamp&gt;.json.gz.enc.01</td></tr><tr><td><b>Decryption Password</b></td><td><code>infected</code> &mdash; open in Cyber Triage product</td></tr></table>",
+                                    "Importance": "Normal",
+                                    "IsHtml": true
+                                  }
+                                }
+                              },
+                              "Email_Started_Result": {
+                                "type": "Compose",
+                                "runAfter": { "Email_Started": ["Succeeded", "Failed", "Skipped", "TimedOut"] },
+                                "inputs": {
+                                  "status": "NotificationAttempted",
+                                  "emailActionStatus": "@actions('Email_Started')?['status']"
+                                }
                               }
-                            }
-                          },
-                          "Email_Started_Result": {
-                            "type": "Compose",
-                            "runAfter": { "Email_Started": ["Succeeded", "Failed", "Skipped", "TimedOut"] },
-                            "inputs": {
-                              "status": "NotificationAttempted",
-                              "emailActionStatus": "@actions('Email_Started')?['status']"
+                            },
+                            "else": {
+                              "actions": {
+                                "Email_Skipped": {
+                                  "type": "Compose",
+                                  "runAfter": {},
+                                  "inputs": { "status": "NotificationSkipped", "reason": "NotificationEmail is blank." }
+                                }
+                              }
                             }
                           }
                         }
