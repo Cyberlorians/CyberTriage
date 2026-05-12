@@ -256,11 +256,12 @@ deploy time.
 If you set a notification email:
 
 ```text
-1. Open the CyberTriage resource group.
-2. Open the API connection that starts with: office365-
-3. Select Edit API connection.
-4. Select Authorize and sign in with a mailbox that can send mail.
-5. Select Save.
+1. Open the CyberTriage-LiveResponse-Collection Logic App.
+2. Under Development Tools, select API connections.
+3. Open the connection whose name starts with: office365-
+4. Select This connection is not authenticated -> Authorize.
+5. Sign in with a mailbox that can send mail.
+6. Select Save.
 ```
 
 If you left the email blank, skip this step.
