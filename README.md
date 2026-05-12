@@ -342,47 +342,67 @@ If you get a 404, wait a minute for the Function to warm up and refresh.
 </details>
 
 <details>
-<summary><b>Step 7. Test SAS Generation</b></summary>
+<summary><b>Step 7. Run One Controlled Device Test</b></summary>
 
-POST to the broker URL with the broker secret. Returned `sasUrl` should start:
+Pick one onboarded MDE device that has been seen by Defender in the last hour
+and can run Live Response. Pick whichever path matches how the customer plans
+to use the solution. Both end at the same place.
 
-| Commercial | GCCH |
-|---|---|
-| `https://<destination-storage-account>.blob.core.windows.net/cybertriage-results?` | `https://<destination-storage-account>.blob.core.usgovcloudapi.net/cybertriage-results?` |
+**Path A — Trigger from a Sentinel incident (Set-CyberTriage playbook).**
+Use this when the analyst already has an incident open.
+
+1. In Microsoft Sentinel, open an incident that has the test device as an
+   entity (or create one against the device).
+2. **Actions → Run playbook**.
+3. Select **Set-CyberTriage** and run it.
+4. Confirm the playbook completes with `Succeeded`.
+5. Confirm in MDE that the device now carries the `ForensicCollect` tag and
+   that a row appeared in the `ForensicCollectQueue` watchlist.
+
+**Path B — Add the device directly to the watchlist.**
+Use this when there is no incident, just a known-bad device.
+
+1. In Microsoft Sentinel, **Configuration → Watchlists →
+   ForensicCollectQueue**.
+2. Select the watchlist → **Update watchlist → Add new item**.
+3. Set:
+   - `MdatpDeviceId` = the MDE device ID of the test device
+   - `DeviceName` = friendly name
+   - `TagName` = `ForensicCollect`
+   - `Status` = leave blank (treated as pending)
+4. Save.
+
+**Then dispatch and watch the pipeline (both paths).**
+
+5. Open **Check-CyberTriageQueue** Logic App → **Run Trigger → Run** to
+   dispatch immediately instead of waiting for the recurrence.
+6. Watch **CyberTriage-LiveResponse-Collection** start in its run history.
+7. In MDE, confirm a Live Response machine action appears for the device.
+8. In the evidence storage account, confirm a blob lands in
+   `cybertriage-results` with this name pattern:
+
+   ```text
+   cttout_<device>_<timestamp>.json.gz.enc.01
+   ```
+
+9. Confirm the `ForensicCollect` tag is removed from the device in MDE.
+10. Confirm the watchlist row is deleted (or marked `Dispatched`).
+
+If any step fails, see Troubleshooting below.
 
 </details>
 
 <details>
-<summary><b>Step 8. Run One Controlled Device Test</b></summary>
+<summary><b>Step 8. Enable The Queue Checker</b></summary>
 
-Pick one onboarded MDE device that has been recently seen and can run Live
-Response.
+Once Step 7 has worked end-to-end at least once:
 
-```text
-1. Add or enqueue the device for collection.
-2. Run Check-CyberTriageQueue manually, or enable it temporarily.
-3. Confirm CyberTriage-LiveResponse-Collection starts.
-4. Confirm MDE creates a Live Response action.
-5. Confirm a blob appears in cybertriage-results.
-6. Confirm the MDE tag is removed.
-7. Confirm the watchlist item is deleted or updated.
-```
+1. Open the **Check-CyberTriageQueue** Logic App.
+2. Select **Overview**.
+3. Select **Enable**.
 
-Expected blob name pattern: `cttout_<device>_<timestamp>.json.gz.enc.01`
-
-</details>
-
-<details>
-<summary><b>Step 9. Enable The Queue Checker</b></summary>
-
-Only after one controlled test works:
-
-```text
-1. Open Logic Apps.
-2. Open Check-CyberTriageQueue.
-3. Select Overview.
-4. Select Enable.
-```
+The recurrence trigger will now poll on the schedule set at deploy time
+(default: every 60 minutes).
 
 </details>
 
