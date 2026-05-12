@@ -27,8 +27,9 @@
     },
     "BrokerSharedSecret": {
       "type": "securestring",
+      "defaultValue": "[newGuid()]",
       "metadata": {
-        "description": "Long random secret used by the collection Logic App to call the broker. This is not a storage key."
+        "description": "Random secret used between the collection Logic App and the SAS broker. Leave blank and ARM generates one with newGuid(). On redeploy, ARM generates a new value unless you paste the existing secret."
       }
     },
     "PackageUri": {

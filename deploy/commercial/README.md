@@ -76,44 +76,30 @@ At the top of the ARM deployment form, fill in these Azure basics.
 The CyberTriage resource group does not have to be the Sentinel workspace
 resource group. Keeping them separate is normal.
 
-## Step 3. Generate The Broker Shared Secret
+## Step 3. Broker Shared Secret (Leave It Alone)
 
 The ARM form has a field named `Broker Shared Secret`.
 
-This is a random secret used by the collection Logic App when it calls the SAS
-broker Function. It is not a storage key, not an MDE secret, and not your user
-password.
+You do not have to enter anything. The template auto-generates this value with
+ARM `newGuid()` if you leave it blank. The same generated value is then written
+to the SAS broker Function app settings and into the collection Logic App URL,
+so the two sides always match.
 
 What to put in the ARM field:
 
 ```text
-Broker Shared Secret = paste the full one-line output from the PowerShell command below
+Broker Shared Secret = leave blank
 ```
 
-Do not leave this blank. Do not type the words `Broker Shared Secret`. Do not
-use a storage account key. Do not use your password. The Azure portal may hide
-the value because this is a secure string field; that is normal.
+The portal may show the field as a blank password box. That is normal for a
+secure string parameter. ARM still uses the auto-generated default.
 
-Generate one before filling in the form.
+If you redeploy the same template later, ARM regenerates this value unless you
+paste the existing secret. The Function app setting and Logic App URL both get
+refreshed in the same deployment, so they stay in sync.
 
-In PowerShell, run:
-
-```powershell
-[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')))
-```
-
-Copy the output and paste it into:
-
-```text
-Broker Shared Secret
-```
-
-If PowerShell is not available, use a password generator and create a random
-secret at least 64 characters long. Paste that random value into `Broker Shared
-Secret`.
-
-Save the value in a secure password vault. You will need it only if you later
-need to rebuild or troubleshoot the broker URL.
+If you are deploying through CLI/parameter file and want a known value, you can
+still pass your own secret. There is no need to do this from the portal.
 
 ## Step 4. Fill In Function And Storage Names
 
@@ -261,7 +247,7 @@ with values from the customer environment.
 | Region | `East US` |
 | Sas Broker Function App Name | `func-ct-sas-<unique-suffix>` |
 | Function Host Storage Account Name | `stcthost<uniquesuffix>` |
-| Broker Shared Secret | Paste the full one-line random value generated in Step 3. The field may hide the value. |
+| Broker Shared Secret | Leave blank. ARM auto-generates with `newGuid()`. |
 | Sas Broker Package Uri | Keep the default. |
 | Destination Storage Account Name | `stctresults<uniquesuffix>` |
 | Target Device Tag | `ForensicCollect` |

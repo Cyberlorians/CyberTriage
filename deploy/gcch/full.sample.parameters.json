@@ -11,9 +11,6 @@
     "FunctionHostStorageAccountName": {
       "value": "<globallyuniquestorageacct>"
     },
-    "BrokerSharedSecret": {
-      "value": "<long-random-secret-do-not-commit-real-value>"
-    },
     "SasBrokerPackageUri": {
       "value": "https://raw.githubusercontent.com/Cyberlorians/CyberTriage/main/packages/SasBrokerNode.zip"
     },
