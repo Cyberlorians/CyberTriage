@@ -34,7 +34,9 @@ flowchart TD
 Step by step:
 
 1. **Tag a device.** An analyst (or an incident automation playbook) tags the
-   device in Microsoft Defender for Endpoint with `ForensicCollect`.
+   device in Microsoft Defender for Endpoint with `ForensicCollect`. The
+   analyst can also add a row directly to the `ForensicCollectQueue` Sentinel
+   watchlist instead of tagging.
 2. **Enqueue the device.** `Set-CyberTriage` adds a row to the
    `ForensicCollectQueue` Sentinel watchlist with the MDE device ID, the
    incident ID, and the tag name.
