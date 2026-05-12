@@ -434,13 +434,13 @@
             "value": "[parameters('SentinelWorkspaceName')]"
           },
           "CollectionPrincipalId": {
-            "value": "[reference(resourceId('Microsoft.Logic/workflows', variables('collectionPlaybookName')), '2019-05-01', 'full').identity.principalId]"
+            "value": "[reference('Deploy-CyberTriage-LiveResponse-Collection').outputs.principalId.value]"
           },
           "SetPrincipalId": {
-            "value": "[reference(resourceId('Microsoft.Logic/workflows', variables('setPlaybookName')), '2019-05-01', 'full').identity.principalId]"
+            "value": "[reference('Deploy-Set-CyberTriage').outputs.principalId.value]"
           },
           "QueuePrincipalId": {
-            "value": "[reference(resourceId('Microsoft.Logic/workflows', variables('queuePlaybookName')), '2019-05-01', 'full').identity.principalId]"
+            "value": "[reference('Deploy-Check-CyberTriageQueue').outputs.principalId.value]"
           },
           "SentinelContributorRoleId": {
             "value": "[variables('sentinelContributorRoleId')]"
