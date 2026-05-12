@@ -1,7 +1,4 @@
-# Commercial Deployment Templates
+# CyberTriage Commercial Deployment
 
-The deployment guide is unified for both clouds. See:
-
-[../README.md](../README.md)
-
-This folder contains the commercial Azure ARM templates used by that guide.
+The full step-by-step guide is on the main repo page:
+[Repo README](../../README.md)

@@ -1,109 +1,16 @@
-# CyberTriage Live Response Deployment
+# CyberTriage Live Response
 
-This repository packages a Microsoft Sentinel and Microsoft Defender for Endpoint workflow that launches Cyber Triage collection through MDE Live Response and uploads the encrypted result to Azure Blob Storage with a short-lived user-delegation SAS URL.
+A Microsoft Sentinel + Microsoft Defender for Endpoint workflow that launches
+Cyber Triage forensic collection through MDE Live Response and uploads the
+encrypted artifact directly to Azure Blob Storage with a short-lived
+user-delegation SAS URL.
 
-The goal is simple:
+No storage account key is sent to the endpoint. Shared key access stays
+disabled.
 
-1. An analyst marks a device for collection.
-2. The device is placed in a Sentinel watchlist queue.
-3. A queue checker waits until the device is active in MDE.
-4. A collection playbook generates a short-lived SAS URL.
-5. MDE Live Response runs the Cyber Triage wrapper on the endpoint.
-6. The endpoint uploads the encrypted artifact directly to Blob Storage.
+---
 
-No storage account key is passed to the endpoint. Shared key access should stay disabled.
-
-## Current Status
-
-This repo packages the commercial deployment and Azure Government / GCCH deployment wrappers. The commercial templates contain the shared workflow definitions; the GCCH templates pass Azure Government endpoint defaults into those shared templates.
-
-Validated in lab on May 8, 2026:
-
-- `Set-CyberTriage` added the MDE tag and queue row.
-- `Check-CyberTriageQueue` selected only active/recent devices.
-- `CyberTriage-LiveResponse-Collection` generated SAS successfully.
-- MDE Live Response ran successfully on `<active-test-device>`.
-- Tag removal and watchlist cleanup worked.
-- Email notification failed but did not block collection.
-
-Important lesson from the lab:
-
-- A VM can be running in Azure and still be inactive in MDE.
-- Inactive MDE devices cannot be collected because MDE Live Response cannot reliably run commands on them.
-
-## Repository Map
-
-```text
-CyberTriage/
-  .deployment
-  README.md
-  deploy/
-    README.md
-    commercial/
-      cybertriage-full-deployment.json
-      full.sample.parameters.json
-      sas-broker-function.json
-      cybertriage-live-response-collection.json
-      check-cybertriage-queue.json
-      set-cybertriage.json
-      README.md
-    gcch/
-      cybertriage-full-deployment.json
-      sas-broker-function.json
-      cybertriage-live-response-collection.json
-      check-cybertriage-queue.json
-      set-cybertriage.json
-      full.sample.parameters.json
-      README.md
-  docs/
-    admin-permission-handoff.md
-    architecture.md
-    commercial-vs-gcch.md
-    deployment-step-by-step.md
-    operations-runbook.md
-    permissions.md
-    setting-permissions-step-by-step.md
-    storage-and-sas-notes.md
-  src/
-    LiveResponse/
-      Run-CyberTriage.ps1
-    SasBrokerNode/
-      Generate-CyberTriageSas/
-      Health/
-      host.json
-      package.json
-  assets/
-    diagrams/
-      architecture.mmd
-      permissions.mmd
-    watchlists/
-      ForensicCollectQueue.csv
-  packages/
-    SasBrokerNode.zip
-    .gitkeep
-```
-
-## What You Need Before Deployment
-
-You need these pieces before the flow can work:
-
-1. A Microsoft Sentinel workspace.
-2. Microsoft Defender for Endpoint with devices onboarded.
-3. An account that is `Owner` on the Azure subscription for the easiest full deployment. This lets the ARM template create resources and assign managed identity permissions automatically.
-4. A permission admin who can grant managed identity permissions if the deployment operator is not allowed to use `Owner`.
-5. The Cyber Triage collector binary from the vendor.
-6. The `Run-CyberTriage.ps1` wrapper uploaded to the MDE Live Response Library.
-7. A storage account and container for encrypted Cyber Triage artifacts. The full deployment can create this for you.
-8. A SAS broker Function that can create user-delegation SAS URLs. The full deployment creates this for you.
-9. The three Logic Apps in this repo. The full deployment creates these for you.
-
-Permissions are split into three documents:
-
-- [docs/permissions.md](docs/permissions.md) explains the human roles, managed identities, and per-Logic-App permissions.
-- [docs/setting-permissions-step-by-step.md](docs/setting-permissions-step-by-step.md) shows exactly how to set the permissions in the Azure portal or with Azure CLI.
-- [docs/admin-permission-handoff.md](docs/admin-permission-handoff.md) gives the exact handoff script for an Owner, User Access Administrator, Global Administrator, Cloud Application Administrator, or other admin who must grant permissions after deployment.
-
-## High-Level Flow
+## How It Works
 
 ```mermaid
 flowchart TD
@@ -124,117 +31,370 @@ flowchart TD
     Collection --> Cleanup[Remove tag and delete watchlist item]
 ```
 
-## Deployment Order
+Step by step:
 
-Deploy in this order:
+1. An analyst (or incident automation) marks a device for collection.
+2. The device is added to the `ForensicCollectQueue` Sentinel watchlist.
+3. `Check-CyberTriageQueue` waits until the device is active in MDE.
+4. `CyberTriage-LiveResponse-Collection` asks the SAS broker for a short-lived
+   user-delegation SAS URL.
+5. MDE Live Response runs `Run-CyberTriage.ps1` on the endpoint, which calls
+   `CyberTriageCollector.exe`.
+6. The endpoint streams the encrypted artifact directly to Blob Storage using
+   the SAS URL.
+7. The MDE tag is removed and the watchlist item is deleted or updated.
 
-1. Run the full commercial deployment as `Owner` on the subscription.
-2. Let ARM create evidence storage, the `cybertriage-results` container, the SAS broker Function, and the three Logic Apps.
-3. Let ARM assign Azure RBAC roles to the managed identities.
-4. Authorize the Logic App API connections.
-5. Upload `CyberTriageCollector.exe` to the MDE Live Response Library.
-6. Upload `Run-CyberTriage.ps1` to the MDE Live Response Library.
-7. Create or verify the `ForensicCollectQueue` watchlist.
-8. Test `/api/health` on the broker.
-9. Test SAS generation without printing the SAS URL.
-10. Run one controlled test against an active MDE device.
-11. Enable the queue checker recurrence.
+---
 
-See [docs/deployment-step-by-step.md](docs/deployment-step-by-step.md) for the long version.
+## Deployment
 
-## Commercial And GCCH
+One guide for both clouds. Any field that differs between Commercial Azure and
+Azure Government / GCC High is shown side by side.
 
-Commercial Azure and GCCH are not just different regions. They use different
-portals, authorities, service URLs, managed APIs, and application endpoints.
+### Step 1. Click Deploy
 
-The deployment guide is unified for both clouds. Pick your cloud, click the
-matching deploy button, then follow the same step-by-step instructions:
-
-[deploy/README.md](deploy/README.md)
-
-Endpoint differences are also tracked in
-[docs/commercial-vs-gcch.md](docs/commercial-vs-gcch.md).
-
-GCCH verification performed on May 9, 2026 confirmed the Azure Government cloud
-endpoints, required managed API connectors in `usgovvirginia`, and the
-WindowsDefenderATP enterprise app with the required MDE app roles. End-to-end
-Live Response still requires an onboarded, active MDE device in the target
-tenant.
-
-## Deploy
-
-Pick your cloud and use the matching button. Both buttons deploy the same
-underlying templates and create the same resource set. Cloud-specific defaults
-(MDE API, ARM, storage suffix) are pre-filled per cloud.
+Pick your cloud and click the matching button. Both buttons load the same form
+in the matching portal.
 
 | Commercial Azure | Azure Government / GCC High |
 |---|---|
 | Portal: `https://portal.azure.com` | Portal: `https://portal.azure.us` |
 | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcybertriage-full-deployment.json) | [![Deploy to Azure Government](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fgcch%2Fcybertriage-full-deployment.json) |
 
-After clicking, follow the field-by-field instructions in
-[deploy/README.md](deploy/README.md). The unified guide shows what to enter in
-every ARM form field, side by side for Commercial and GCCH where the values
-differ.
-
-The `Broker Shared Secret` field can be left blank. ARM auto-generates the
-value with `newGuid()` and wires it into both the Function app setting and the
-Logic App URL in the same deployment, so they always match.
-
-If you redeploy later and leave the field blank, ARM regenerates a new value.
-Both sides get refreshed in the same deployment, so they stay in sync. To keep
-the same secret across redeploys, paste the existing value into the field on
-the redeploy.
-
-The full ARM template can set Azure RBAC if the deployer has rights to do so.
-It cannot, by itself, grant Microsoft Defender for Endpoint application roles
-on the WindowsDefenderATP Enterprise App. Set those MDE app roles after
-deployment with [scripts/Grant-CyberTriagePermissions.ps1](scripts/Grant-CyberTriagePermissions.ps1),
-or have an Entra admin grant them manually.
-
-If Azure shows a quota error like `Dynamic VMs: 0`, pick a region where the
-subscription has Azure Functions Consumption quota or ask the subscription
-owner to raise the quota. That is an Azure quota problem, not a CyberTriage
-template problem.
-
-## Safety Rules
-
-Do not commit these items:
-
-- SAS URLs.
-- Function keys.
-- Broker shared secrets.
-- Storage account keys.
-- Cyber Triage collector binaries, unless the customer explicitly owns redistribution rights and the repository is private.
-- Real customer incident data.
-
-## How To Know It Worked
-
-A healthy run looks like this:
+The full deployment creates these resources in the resource group you select:
 
 ```text
-Check-CyberTriageQueue: Succeeded
-CyberTriage-LiveResponse-Collection: Succeeded
-Generate_CyberTriage_Sas: Succeeded
-Run_LR_Collection: Succeeded
-MDE machine action: LiveResponse Succeeded
-MDE Live Response commands: Completed
-Remove_Tag: Succeeded
-Delete_Watchlist_Item: Succeeded
+Evidence storage account
+Evidence blob container: cybertriage-results
+SAS broker Function App
+Function host storage account
+CyberTriage-LiveResponse-Collection Logic App
+Set-CyberTriage Logic App
+Check-CyberTriageQueue Logic App
+Azure RBAC assignments that ARM is allowed to create
 ```
 
-A real artifact looks like this:
+#### Subscription, Resource Group, And Region
+
+| Portal Field | What To Put | Commercial Example | GCCH Example |
+|---|---|---|---|
+| Subscription | Subscription where CyberTriage resources will be created. | `<playbook-subscription-guid>` | `99c69aca-874f-48fe-ab6c-3e0f88f205f1` |
+| Resource group | New or existing resource group for CyberTriage. | `rg-cybertriage` | `rg-cybertriage-gcch` |
+| Region | Region for the CyberTriage resources. | `East US` | `(US) USGov Virginia` |
+| Location | Generated value matching the region. | `eastus` | `usgovvirginia` |
+
+#### Broker Shared Secret
+
+Leave blank. The template auto-generates the secret with `newGuid()` and wires
+it into both the Function app setting and the Logic App URL in the same
+deployment, so they always match. To keep the same secret across redeploys,
+paste the existing value into this field.
+
+#### Function And Storage Names
+
+| Portal Field | What To Put | Example |
+|---|---|---|
+| Sas Broker Function App Name | Globally unique Function App name for the SAS broker. | `func-ct-sas-contoso` |
+| Function Host Storage Account Name | Storage account used internally by Azure Functions. | `stcthostcontoso01` |
+| Sas Broker Package Uri | Keep the default unless hosting the package yourself. | `https://raw.githubusercontent.com/Cyberlorians/CyberTriage/main/packages/SasBrokerNode.zip` |
+| Destination Storage Account Name | Evidence storage account for encrypted Cyber Triage output. | `stctresultscontoso01` |
+| Target Device Tag | MDE device tag used to mark devices for collection. | `ForensicCollect` |
+
+Storage account name rules: lowercase letters and numbers only, 3-24
+characters, globally unique, no dashes, no underscores.
+
+#### Notification Email (Optional)
+
+| If You Want Email | If You Do Not Want Email |
+|---|---|
+| Enter a security mailbox. | Leave blank. |
+| Commercial example: `security-team@contoso.com` | The workflow skips the email action. |
+| GCCH example: `security-team@contoso.us` | |
+
+If used, the Office 365 connection still needs manual user authorization after
+deployment.
+
+#### Sentinel Workspace Values
+
+The form takes four separate fields. It does not take a single workspace
+resource ID and it does not take only the workspace GUID.
+
+| Portal Field | Where To Find It |
+|---|---|
+| Sentinel Workspace Subscription Id | The subscription that contains the Sentinel workspace. |
+| Sentinel Workspace Resource Group | The resource group of the Log Analytics workspace that has Sentinel enabled. |
+| Sentinel Workspace Name | The Log Analytics workspace name. |
+| Sentinel Workspace Customer Id | Workspace ID / customer ID GUID from the workspace Overview page. |
+
+| Portal Field | Commercial Example | GCCH Example |
+|---|---|---|
+| Sentinel Workspace Subscription Id | `<sentinel-subscription-guid>` | `99c69aca-874f-48fe-ab6c-3e0f88f205f1` |
+| Sentinel Workspace Resource Group | `rg-sentinel-prod` | `Sentinel` |
+| Sentinel Workspace Name | `law-sentinel-prod` | `dibsecus` |
+| Sentinel Workspace Customer Id | `<workspace-guid>` | `5714fa24-7a6b-4304-9d42-a0173a2eaede` |
+
+#### Cloud-Specific Endpoint Defaults
+
+Pre-filled per cloud. Do not change unless you know why.
+
+| Portal Field | Commercial Default | GCCH Default |
+|---|---|---|
+| Defender Api Base Uri | `https://api.securitycenter.microsoft.com` | `https://api-gov.securitycenter.microsoft.us` |
+| Defender Api Audience | `https://securitycenter.onmicrosoft.com/windowsatpservice` | `https://api-gov.securitycenter.microsoft.us` |
+| Arm Base Uri | `https://management.azure.com` | `https://management.usgovcloudapi.net` |
+| Arm Audience | `https://management.azure.com/` | `https://management.usgovcloudapi.net/` |
+| Storage Blob Dns Suffix | `blob.core.windows.net` | `blob.core.usgovcloudapi.net` |
+| Storage Token Resource | `https://storage.azure.com/` | `https://storage.azure.com/` |
+
+For regular GCC (not GCC High), the Defender API endpoint is normally
+`https://api-gcc.securitycenter.microsoft.us`.
+
+#### Other Defaults
+
+| Portal Field | Default |
+|---|---|
+| Watchlist Alias | `ForensicCollectQueue` |
+| Sas Expiry Minutes | `1440` |
+| Sas Permissions | `racwdl` |
+| Poll Frequency Minutes | `60` |
+| Online Window Minutes | `60` |
+
+#### Review And Create
+
+Select **Review + create**, wait for validation to pass, then select **Create**.
+Wait for `Deployment status: Succeeded`. If it fails, expand the failed nested
+deployment in Deployment details to see the real error.
+
+---
+
+### Step 2. Run The Permission Script
+
+> **A Microsoft Entra Global Administrator or Application Administrator must
+> run this step.** The script grants Microsoft Defender for Endpoint
+> application roles to the Logic App managed identities. ARM cannot do this on
+> its own because the roles live in Microsoft Entra ID on the
+> WindowsDefenderATP enterprise application.
+
+Download the script:
+[scripts/Grant-CyberTriageDefenderRoles.ps1](scripts/Grant-CyberTriageDefenderRoles.ps1)
+
+Run it from a PowerShell session signed in to the same tenant. No parameters
+required:
+
+```powershell
+# Commercial
+az login
+.\Grant-CyberTriageDefenderRoles.ps1
+```
+
+```powershell
+# GCC High
+az cloud set --name AzureUSGovernment
+az login
+.\Grant-CyberTriageDefenderRoles.ps1
+```
+
+The script grants:
+
+| Logic App Managed Identity | MDE App Roles Granted |
+|---|---|
+| `Set-CyberTriage` | `Machine.ReadWrite.All` |
+| `CyberTriage-LiveResponse-Collection` | `Machine.Read.All`, `Machine.ReadWrite.All`, `Machine.LiveResponse` |
+| `Check-CyberTriageQueue` | None (does not call MDE) |
+
+The script is idempotent. Running it again only adds missing roles.
+
+---
+
+## Verification
+
+### Step 3. Authorize Logic App API Connections
+
+The Sentinel and Log Analytics connections use managed identity and do not
+need user authorization. The Office 365 connection is the only one that
+requires a user to sign in, and only if `NotificationEmail` was filled in at
+deploy time.
+
+If you set a notification email:
 
 ```text
-cttout_<device>_<timestamp>.json.gz.enc.01
-cttout_<device>_<timestamp>.json.gz.enc.02
+1. Open the CyberTriage resource group.
+2. Open the API connection that starts with: office365-
+3. Select Edit API connection.
+4. Select Authorize and sign in with a mailbox that can send mail.
+5. Select Save.
 ```
 
-`cttest-blob` is only test/probe noise. It is not the Cyber Triage artifact.
+If you left the email blank, skip this step.
 
-## Next Build Items
+### Step 4. Upload The MDE Live Response Library Files
 
-- Convert duplicated ARM values into a single environment parameter model.
-- Add one-click Deploy to Azure Government buttons after GCCH endpoint verification.
-- Add screenshots or rendered diagrams for the final customer guide.
-- Add production screenshots for setting permissions and authorizing API connections.
+Upload both files to the Microsoft Defender for Endpoint Live Response
+Library. The names must match exactly.
+
+```text
+CyberTriageCollector.exe
+Run-CyberTriage.ps1
+```
+
+The wrapper script is in this repo:
+[src/LiveResponse/Run-CyberTriage.ps1](src/LiveResponse/Run-CyberTriage.ps1)
+
+How to upload in the Microsoft Defender portal:
+
+```text
+1. Open https://security.microsoft.com  (GCCH: https://security.microsoft.us)
+2. Settings -> Endpoints -> Advanced features.
+3. Confirm Live Response is on for servers and clients as needed.
+4. Select any onboarded device -> Initiate Live Response Session.
+5. In the Live Response console, select the Library icon (top right).
+6. Select Upload file to library.
+7. Upload CyberTriageCollector.exe. Add a description. Select Confirm.
+8. Repeat: Upload file to library -> Run-CyberTriage.ps1 -> Confirm.
+9. Close the Live Response session.
+```
+
+The two files are now available to every Live Response session in the tenant.
+
+### Step 5. Create The Sentinel Watchlist
+
+Create the `ForensicCollectQueue` watchlist in the same Sentinel workspace you
+entered during deploy. The Logic Apps read and write rows in this watchlist to
+track collection state.
+
+Starter CSV in this repo:
+[assets/watchlists/ForensicCollectQueue.csv](assets/watchlists/ForensicCollectQueue.csv)
+
+How to create it in the Sentinel portal:
+
+```text
+1. Open Microsoft Sentinel and select the workspace from deploy.
+2. Configuration -> Watchlists.
+3. Select + New.
+4. General tab:
+     Name:        ForensicCollectQueue
+     Alias:       ForensicCollectQueue   (must match the deploy parameter)
+     Description: CyberTriage collection queue
+5. Select Next: Source.
+6. Source tab:
+     Source type:           Local file
+     File:                  upload ForensicCollectQueue.csv from this repo
+     Number of header rows: 1
+     Search key:            MdatpDeviceId
+7. Select Next: Review and create -> Create.
+```
+
+Important columns:
+
+| Column | Purpose |
+|---|---|
+| `MdatpDeviceId` | MDE device ID. Required. Used as the watchlist search key. |
+| `DeviceName` | Friendly device name. Optional. |
+| `IncidentId` | Sentinel incident that triggered the queue row. Optional. |
+| `TagName` | MDE tag used to dispatch this row. Defaults to the deploy tag. |
+| `EnqueuedTime` | UTC timestamp the row was added. |
+| `Attempts` | Dispatch attempt count. The queue checker increments it. |
+| `Status` | Blank or `Pending` is treated as ready. Other values: `BlockedLiveResponse`, `Dispatched`. |
+| `RetryAfterUtc` | If set, the queue checker waits until this time before retrying. |
+
+Blank `Status` is valid and is treated as pending.
+
+### Step 6. Test The Broker Health Endpoint
+
+Open the `sasBrokerHealthUrl` deployment output in a browser.
+
+| Commercial | GCCH |
+|---|---|
+| `https://<function-app-name>.azurewebsites.net/api/health` | `https://<function-app-name>.azurewebsites.us/api/health` |
+
+Expected:
+
+```json
+{ "status": "ok" }
+```
+
+### Step 7. Test SAS Generation
+
+POST to the broker URL with the broker secret. Returned `sasUrl` should start:
+
+| Commercial | GCCH |
+|---|---|
+| `https://<destination-storage-account>.blob.core.windows.net/cybertriage-results?` | `https://<destination-storage-account>.blob.core.usgovcloudapi.net/cybertriage-results?` |
+
+### Step 8. Run One Controlled Device Test
+
+Pick one onboarded MDE device that has been recently seen and can run Live
+Response.
+
+```text
+1. Add or enqueue the device for collection.
+2. Run Check-CyberTriageQueue manually, or enable it temporarily.
+3. Confirm CyberTriage-LiveResponse-Collection starts.
+4. Confirm MDE creates a Live Response action.
+5. Confirm a blob appears in cybertriage-results.
+6. Confirm the MDE tag is removed.
+7. Confirm the watchlist item is deleted or updated.
+```
+
+Expected blob name pattern: `cttout_<device>_<timestamp>.json.gz.enc.01`
+
+### Step 9. Enable The Queue Checker
+
+Only after one controlled test works:
+
+```text
+1. Open Logic Apps.
+2. Open Check-CyberTriageQueue.
+3. Select Overview.
+4. Select Enable.
+```
+
+---
+
+## Troubleshooting Quick Checks
+
+### Deployment Fails At Sentinel RBAC
+
+Check whether the deployer has permission on the Sentinel workspace
+subscription and resource group.
+
+### Broker Health Returns 404
+
+```text
+Function App exists
+WEBSITE_RUN_FROM_PACKAGE points to packages/SasBrokerNode.zip
+Function runtime is Node 20
+Function host storage role assignments are in place
+```
+
+### MDE Calls Return 403
+
+Re-run `Grant-CyberTriageDefenderRoles.ps1` and confirm:
+
+```text
+Set-CyberTriage:
+  Machine.ReadWrite.All
+
+CyberTriage-LiveResponse-Collection:
+  Machine.Read.All
+  Machine.ReadWrite.All
+  Machine.LiveResponse
+```
+
+### Queue Checker Finds No Devices
+
+The device must be active in MDE with recent `DeviceInfo` telemetry in the
+Sentinel workspace. A running VM is not enough.
+
+---
+
+## Individual Deployment Buttons
+
+Use only when deploying pieces separately.
+
+| Component | Commercial | GCCH |
+|---|---|---|
+| SAS broker only | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fsas-broker-function.json) | [![Deploy to Azure Government](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fgcch%2Fsas-broker-function.json) |
+| Collection playbook only | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcybertriage-live-response-collection.json) | [![Deploy to Azure Government](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fgcch%2Fcybertriage-live-response-collection.json) |
+| Incident tagging playbook only | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fset-cybertriage.json) | [![Deploy to Azure Government](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fgcch%2Fset-cybertriage.json) |
+| Queue checker only | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fcommercial%2Fcheck-cybertriage-queue.json) | [![Deploy to Azure Government](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCyberlorians%2FCyberTriage%2Fmain%2Fdeploy%2Fgcch%2Fcheck-cybertriage-queue.json) |
