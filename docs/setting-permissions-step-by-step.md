@@ -108,6 +108,8 @@ The script also sets these Microsoft Defender for Endpoint application roles unl
 | CyberTriage-LiveResponse-Collection managed identity | WindowsDefenderATP | Machine.Read.All; Machine.ReadWrite.All; Machine.LiveResponse |
 | Check-CyberTriageQueue managed identity | WindowsDefenderATP | None. It does not call MDE directly. |
 
+Artifact readers are separate from the automation identities. Anyone who needs to browse, open, or download blobs from the `cybertriage-results` container needs `Storage Blob Data Reader` on the evidence storage account or on that container. Subscription `Owner` can manage the storage resource, but it does not grant blob data-plane read access when shared key access is disabled.
+
 ## Manual Method: Azure Portal Step By Step
 
 Use this if the customer does not want to run a script or if the full Owner deployment was not used.
@@ -368,6 +370,15 @@ az role assignment create --assignee-object-id $BrokerPrincipalId --assignee-pri
 az role assignment create --assignee-object-id $BrokerPrincipalId --assignee-principal-type ServicePrincipal --role 'Storage Blob Data Contributor' --scope $EvidenceStorageScope
 ```
 
+Grant artifact readers access to read uploaded blobs:
+
+```powershell
+$ReaderObjectId = '<user-or-group-object-id>'
+az role assignment create --assignee-object-id $ReaderObjectId --assignee-principal-type User --role 'Storage Blob Data Reader' --scope $EvidenceStorageScope
+```
+
+For groups, change `--assignee-principal-type User` to `Group`.
+
 Grant Function host storage roles:
 
 ```powershell
@@ -399,6 +410,7 @@ At minimum, confirm:
 ```text
 SAS broker has Storage Blob Delegator on evidence storage.
 SAS broker has Storage Blob Data Contributor on evidence storage.
+Artifact readers have Storage Blob Data Reader on evidence storage or the cybertriage-results container.
 SAS broker has host storage data roles on Function host storage.
 Set-CyberTriage has Microsoft Sentinel Contributor on the workspace.
 Check-CyberTriageQueue has Microsoft Sentinel Contributor on the workspace.

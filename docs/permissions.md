@@ -137,6 +137,8 @@ It needs this access on the evidence storage account:
 | Storage Blob Delegator | Lets the broker request a user delegation key. Without this, user-delegation SAS generation fails. |
 | Storage Blob Data Contributor | Lets the broker work with the blob/container data plane needed for the upload SAS flow. |
 
+People who need to browse, open, or download artifacts from the `cybertriage-results` container need `Storage Blob Data Reader` on the evidence storage account or container. Azure `Owner` and `Contributor` are management-plane roles; they do not grant blob data-plane read access when shared key access is disabled.
+
 It also needs access to the Function host storage account. This is the storage account used internally by the Azure Functions runtime when host storage is configured for managed identity and shared keys are disabled. These queue/table roles are not for the `ForensicCollectQueue` Sentinel watchlist.
 
 The baseline script grants:

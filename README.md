@@ -237,6 +237,8 @@ The script grants:
 
 The script is idempotent. Running it again only adds missing roles.
 
+Anyone who needs to open or download CyberTriage artifacts in the storage account also needs a blob data-plane role on the evidence storage account or container. Subscription `Owner` is not enough for blob reads when shared key access is disabled. Assign `Storage Blob Data Reader` to artifact readers.
+
 If the customer cannot run PowerShell scripts, use Azure Cloud Shell Bash and
 run the same grants with Azure CLI:
 

@@ -460,6 +460,8 @@ cttout_<device>_<timestamp>.json.gz.enc.01
 cttout_<device>_<timestamp>.json.gz.enc.02
 ```
 
+If you can see the storage account but cannot read or download the blobs, assign your user or reader group `Storage Blob Data Reader` on the evidence storage account or the `cybertriage-results` container. Subscription `Owner` is not enough for blob reads when shared key access is disabled.
+
 The watchlist row may be deleted before the final blob appears. That is normal because the Logic App confirms Live Response handoff, not full collection completion.
 
 ## Step 19: Enable The Queue Checker
@@ -502,4 +504,5 @@ Run-CyberTriage.ps1 SHA256
 | MDE action pending/fails | Endpoint may be inactive or another LR action is active. |
 | Watchlist row remains | Device was inactive, not selected, blocked by retry, or collection failed before cleanup. |
 | `cttest-blob` only | Probe worked, final collector upload has not landed yet. |
+| Cannot read or download blobs | Missing `Storage Blob Data Reader` for the user or group on the evidence storage account/container, or RBAC propagation has not completed yet. |
 | Azure VM running but MDE inactive | Sense service/connectivity/onboarding issue on the endpoint. |
