@@ -42,7 +42,7 @@ Runtime MDE collection still requires an onboarded active device.
 | MDE API URL for GCC High | `https://api-gov.securitycenter.microsoft.us` |
 | MDE token audience used by GCCH wrappers | `https://api-gov.securitycenter.microsoft.us` |
 | WindowsDefenderATP app ID | `fc780465-2017-40d4-a0c5-307022471b92` |
-| Logic App managed API connectors in `usgovvirginia` | `azuresentinel`, `azuremonitorlogs`, `office365`, `wdatp` present |
+| Logic App managed API connectors in `usgovvirginia` | `azuresentinel`, `office365`, `wdatp` present; queue polling uses ARM HTTP/MSI instead of `azuremonitorlogs` |
 
 For regular GCC, Microsoft documents the Defender for Endpoint API endpoint as
 `https://api-gcc.securitycenter.microsoft.us`. GCC High uses
@@ -97,7 +97,7 @@ For each cloud, verify:
 ```text
 azuresentinel connector exists
 office365 connector exists, if notifications are used
-azuremonitorlogs connector supports managed identity
+queue checker ARM HTTP action uses the correct cloud ARM URI and managed identity audience
 raw HTTP managed identity can get an MDE token with WindowsDefenderATP app roles
 ```
 

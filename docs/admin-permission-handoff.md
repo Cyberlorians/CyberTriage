@@ -112,7 +112,6 @@ Set-CyberTriage:
   Microsoft Sentinel Contributor on the Sentinel workspace
 
 Check-CyberTriageQueue:
-  Log Analytics Reader on the Sentinel workspace
   Microsoft Sentinel Contributor on the Sentinel workspace
 
 CyberTriage-LiveResponse-Collection:

@@ -47,7 +47,6 @@ Contributor on the playbook resource group
 Storage Account Contributor if storage is created separately
 Logic App Contributor
 Website Contributor or Function App Contributor
-Log Analytics Reader on the Sentinel workspace, for validation
 Microsoft Sentinel Contributor on the Sentinel workspace, for watchlist/playbook validation
 ```
 
@@ -188,9 +187,6 @@ It does these jobs:
 
 ```text
 Query Watchlist rows
-Query DeviceInfo telemetry
-Deduplicate queue rows
-Delete old duplicate watchlist rows
 Call the collection playbook trigger URL
 ```
 
@@ -198,11 +194,10 @@ Required access:
 
 | Area | Permission |
 |---|---|
-| Log Analytics workspace | Log Analytics Reader, so it can query `Watchlist` and `DeviceInfo`. |
-| Sentinel workspace | Microsoft Sentinel Contributor, so it can delete duplicate watchlist items if needed. |
+| Sentinel workspace | Microsoft Sentinel Reader or Contributor, so it can read watchlist items through the ARM Watchlist REST API. The full deployment grants Contributor to keep the playbook permission model simple. |
 | Collection playbook trigger | The secure HTTP trigger URL for `CyberTriage-LiveResponse-Collection`. Store as a secure parameter. |
 
-The queue checker intentionally leaves inactive devices in the watchlist. This is not a permission issue. It is because MDE Live Response cannot reliably run on inactive endpoints.
+The queue checker no longer uses the Log Analytics connector, `DeviceInfo`, or KQL. Queued devices are handed to the collection playbook; the collection playbook performs the MDE Live Response gate.
 
 ## CyberTriage-LiveResponse-Collection Logic App Permissions
 

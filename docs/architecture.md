@@ -76,9 +76,9 @@ RetryAfterUtc
 
 `Check-CyberTriageQueue` runs on a schedule.
 
-It joins watchlist rows to recent `DeviceInfo` telemetry.
+It reads watchlist rows through the ARM Watchlist REST API with its managed identity.
 
-If a device is stale or inactive, the row stays in the queue.
+Queued rows are handed to `CyberTriage-LiveResponse-Collection`, which checks MDE Live Response state before dispatch.
 
 This is intentional. MDE Live Response cannot reliably run on inactive endpoints.
 

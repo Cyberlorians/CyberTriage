@@ -97,7 +97,7 @@ That script sets these Azure RBAC permissions:
 | SAS broker Function managed identity | Evidence storage account | Storage Blob Delegator; Storage Blob Data Contributor |
 | SAS broker Function managed identity | Function host storage account used by the Azure Functions runtime, not the Sentinel watchlist queue | Storage Blob Data Contributor; Storage Queue Data Contributor; Storage Table Data Contributor |
 | Set-CyberTriage managed identity | Sentinel workspace | Microsoft Sentinel Contributor |
-| Check-CyberTriageQueue managed identity | Sentinel workspace | Log Analytics Reader; Microsoft Sentinel Contributor |
+| Check-CyberTriageQueue managed identity | Sentinel workspace | Microsoft Sentinel Contributor |
 | CyberTriage-LiveResponse-Collection managed identity | Sentinel workspace | Microsoft Sentinel Contributor |
 
 The script also sets these Microsoft Defender for Endpoint application roles unless you add `-SkipDefenderAppRoles`:
@@ -195,8 +195,7 @@ This Logic App reads the queue, checks MDE activity telemetry, and calls the col
 6. Go to the Sentinel workspace's Log Analytics workspace resource.
 7. Open `Access control (IAM)`.
 8. Select `Add` > `Add role assignment`.
-9. Add `Log Analytics Reader` to the `Check-CyberTriageQueue` managed identity.
-10. Add `Microsoft Sentinel Contributor` to the `Check-CyberTriageQueue` managed identity.
+9. Add `Microsoft Sentinel Contributor` to the `Check-CyberTriageQueue` managed identity.
 
 ### Authorize Logic App API Connections
 
@@ -209,8 +208,6 @@ Connections that may need authorization:
 ```text
 azuresentinel-Set-CyberTriage
 azuresentinel-CyberTriage-LiveResponse-Collection
-azuresentinel-Check-CyberTriageQueue
-azuremonitorlogs-Check-CyberTriageQueue
 office365-CyberTriage-LiveResponse-Collection
 ```
 
@@ -330,7 +327,6 @@ Grant Sentinel workspace roles:
 ```powershell
 az role assignment create --assignee-object-id $SetPrincipalId --assignee-principal-type ServicePrincipal --role 'Microsoft Sentinel Contributor' --scope $WorkspaceScope
 
-az role assignment create --assignee-object-id $QueuePrincipalId --assignee-principal-type ServicePrincipal --role 'Log Analytics Reader' --scope $WorkspaceScope
 az role assignment create --assignee-object-id $QueuePrincipalId --assignee-principal-type ServicePrincipal --role 'Microsoft Sentinel Contributor' --scope $WorkspaceScope
 
 az role assignment create --assignee-object-id $CollectionPrincipalId --assignee-principal-type ServicePrincipal --role 'Microsoft Sentinel Contributor' --scope $WorkspaceScope
@@ -351,7 +347,7 @@ SAS broker has Storage Blob Delegator on evidence storage.
 SAS broker has Storage Blob Data Contributor on evidence storage.
 SAS broker has host storage data roles on Function host storage.
 Set-CyberTriage has Microsoft Sentinel Contributor on the workspace.
-Check-CyberTriageQueue has Log Analytics Reader and Microsoft Sentinel Contributor on the workspace.
+Check-CyberTriageQueue has Microsoft Sentinel Contributor on the workspace.
 CyberTriage-LiveResponse-Collection has Microsoft Sentinel Contributor on the workspace.
 Set-CyberTriage has Machine.ReadWrite.All on WindowsDefenderATP.
 CyberTriage-LiveResponse-Collection has Machine.Read.All, Machine.ReadWrite.All, and Machine.LiveResponse on WindowsDefenderATP.
