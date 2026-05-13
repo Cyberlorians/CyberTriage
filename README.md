@@ -200,7 +200,7 @@ deployment in Deployment details to see the real error.
 </details>
 
 <details>
-<summary><b>Step 2. Run The Permission Script</b></summary>
+<summary><b>Step 2. Run The Permission Script Or Azure CLI Commands</b></summary>
 
 > **A Microsoft Entra Global Administrator or Application Administrator must
 > run this step.** The script grants Microsoft Defender for Endpoint
