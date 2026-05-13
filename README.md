@@ -237,6 +237,50 @@ The script grants:
 
 The script is idempotent. Running it again only adds missing roles.
 
+If the customer cannot run PowerShell scripts, use Azure Cloud Shell Bash and
+run the same grants with Azure CLI:
+
+```bash
+# Commercial: run az login first.
+# GCC High: run az cloud set --name AzureUSGovernment && az login first.
+
+SUBSCRIPTION_ID="<subscription-guid>"
+PLAYBOOK_RESOURCE_GROUP="<playbook-resource-group>"
+DEFENDER_APP_ID="fc780465-2017-40d4-a0c5-307022471b92"
+
+az account set --subscription "$SUBSCRIPTION_ID"
+
+GRAPH="$(az cloud show --query endpoints.microsoftGraphResourceId -o tsv | sed 's#/$##')"
+DEFENDER_SP_ID="$(az ad sp show --id "$DEFENDER_APP_ID" --query id -o tsv)"
+
+grant_mde_role() {
+   workflow_name="$1"
+   role_value="$2"
+
+   mi_id="$(az logic workflow show --resource-group "$PLAYBOOK_RESOURCE_GROUP" --name "$workflow_name" --query identity.principalId -o tsv)"
+   role_id="$(az ad sp show --id "$DEFENDER_APP_ID" --query "appRoles[?value=='$role_value' && contains(allowedMemberTypes, 'Application') && isEnabled].id | [0]" -o tsv)"
+   existing="$(az rest --method get --url "$GRAPH/v1.0/servicePrincipals/$mi_id/appRoleAssignments" --query "value[?resourceId=='$DEFENDER_SP_ID' && appRoleId=='$role_id'].id | [0]" -o tsv)"
+
+   if [ -n "$existing" ]; then
+      echo "[skip] $workflow_name already has $role_value"
+      return 0
+   fi
+
+   az rest \
+      --method post \
+      --url "$GRAPH/v1.0/servicePrincipals/$mi_id/appRoleAssignments" \
+      --headers "Content-Type=application/json" \
+      --body "{\"principalId\":\"$mi_id\",\"resourceId\":\"$DEFENDER_SP_ID\",\"appRoleId\":\"$role_id\"}"
+
+   echo "[ok] $workflow_name granted $role_value"
+}
+
+grant_mde_role "Set-CyberTriage" "Machine.ReadWrite.All"
+grant_mde_role "CyberTriage-LiveResponse-Collection" "Machine.Read.All"
+grant_mde_role "CyberTriage-LiveResponse-Collection" "Machine.ReadWrite.All"
+grant_mde_role "CyberTriage-LiveResponse-Collection" "Machine.LiveResponse"
+```
+
 </details>
 
 ---
@@ -248,8 +292,8 @@ Click any step to expand.
 <details>
 <summary><b>Step 3. Authorize Logic App API Connections</b></summary>
 
-The Sentinel and Log Analytics connections use managed identity and do not
-need user authorization. The Office 365 connection is the only one that
+The Sentinel connection uses managed identity and does not need user
+authorization. The Office 365 connection is the only one that
 requires a user to sign in, and only if `NotificationEmail` was filled in at
 deploy time.
 
