@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-  "contentVersion": "1.0.0.0",
+  "contentVersion": "1.1.0.0",
   "metadata": {
     "title": "Check-CyberTriageQueue - GCCH",
     "description": "Azure Government wrapper for the CyberTriage queue checker playbook.",
@@ -15,6 +15,14 @@
     "WatchlistAlias": { "type": "string", "defaultValue": "ForensicCollectQueue" },
     "PollFrequencyMinutes": { "type": "int", "defaultValue": 60 },
     "OnlineWindowMinutes": { "type": "int", "defaultValue": 60 },
+    "ArmBaseUri": {
+      "type": "string",
+      "defaultValue": "https://management.usgovcloudapi.net"
+    },
+    "ArmAudience": {
+      "type": "string",
+      "defaultValue": "https://management.usgovcloudapi.net/"
+    },
     "TemplateBaseUri": {
       "type": "string",
       "defaultValue": "https://raw.githubusercontent.com/Cyberlorians/CyberTriage/main/deploy/commercial/"
@@ -29,7 +37,7 @@
         "mode": "Incremental",
         "templateLink": {
           "uri": "[concat(parameters('TemplateBaseUri'), 'check-cybertriage-queue.json')]",
-          "contentVersion": "1.0.0.0"
+          "contentVersion": "1.1.0.0"
         },
         "parameters": {
           "location": { "value": "[parameters('location')]" },
@@ -39,7 +47,9 @@
           "SentinelWorkspaceSubscriptionId": { "value": "[parameters('SentinelWorkspaceSubscriptionId')]" },
           "WatchlistAlias": { "value": "[parameters('WatchlistAlias')]" },
           "PollFrequencyMinutes": { "value": "[parameters('PollFrequencyMinutes')]" },
-          "OnlineWindowMinutes": { "value": "[parameters('OnlineWindowMinutes')]" }
+          "OnlineWindowMinutes": { "value": "[parameters('OnlineWindowMinutes')]" },
+          "ArmBaseUri": { "value": "[parameters('ArmBaseUri')]" },
+          "ArmAudience": { "value": "[parameters('ArmAudience')]" }
         }
       }
     }

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-  "contentVersion": "1.0.0.0",
+  "contentVersion": "1.1.0.0",
   "metadata": {
     "title": "CyberTriage Full GCCH Deployment",
     "description": "Azure Government wrapper for the full CyberTriage deployment. It supplies GCCH endpoint defaults to the shared commercial templates.",
@@ -161,7 +161,7 @@
         "mode": "Incremental",
         "templateLink": {
           "uri": "[concat(parameters('TemplateBaseUri'), 'cybertriage-full-deployment.json')]",
-          "contentVersion": "1.0.0.0"
+          "contentVersion": "1.1.0.0"
         },
         "parameters": {
           "location": { "value": "[parameters('location')]" },

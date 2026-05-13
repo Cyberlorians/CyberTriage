@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-  "contentVersion": "1.0.0.0",
+  "contentVersion": "1.1.0.0",
   "metadata": {
     "title": "CyberTriage Full Commercial Deployment",
     "description": "Deploys the evidence storage account, SAS broker Function App, all three CyberTriage Logic Apps, and Azure RBAC role assignments into one resource group. Connector authorization is still completed after deployment.",
@@ -161,7 +161,6 @@
     "functionHostStorageResourceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('FunctionHostStorageAccountName'))]",
     "storageBlobDelegatorRoleId": "db58b8e5-c6ad-4a2a-8342-4190687cbf4a",
     "storageBlobDataContributorRoleId": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
-    "logAnalyticsReaderRoleId": "73c42c96-874c-492b-b04d-ab87d138a893",
     "sentinelContributorRoleId": "ab8e14d6-4a74-4a29-9ba8-549422addade"
   },
   "resources": [
@@ -353,7 +352,7 @@
         "mode": "Incremental",
         "templateLink": {
           "uri": "[concat(parameters('TemplateBaseUri'), 'check-cybertriage-queue.json')]",
-          "contentVersion": "1.0.0.0"
+          "contentVersion": "1.1.0.0"
         },
         "parameters": {
           "location": {
@@ -379,6 +378,12 @@
           },
           "OnlineWindowMinutes": {
             "value": "[parameters('OnlineWindowMinutes')]"
+          },
+          "ArmBaseUri": {
+            "value": "[parameters('ArmBaseUri')]"
+          },
+          "ArmAudience": {
+            "value": "[parameters('ArmAudience')]"
           }
         }
       }
@@ -444,9 +449,6 @@
           },
           "SentinelContributorRoleId": {
             "value": "[variables('sentinelContributorRoleId')]"
-          },
-          "LogAnalyticsReaderRoleId": {
-            "value": "[variables('logAnalyticsReaderRoleId')]"
           }
         },
         "template": {
@@ -466,9 +468,6 @@
               "type": "string"
             },
             "SentinelContributorRoleId": {
-              "type": "string"
-            },
-            "LogAnalyticsReaderRoleId": {
               "type": "string"
             }
           },
@@ -495,17 +494,6 @@
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('SentinelContributorRoleId'))]",
                 "principalId": "[parameters('SetPrincipalId')]",
-                "principalType": "ServicePrincipal"
-              }
-            },
-            {
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "name": "[guid(variables('sentinelWorkspaceResourceId'), parameters('QueuePrincipalId'), parameters('LogAnalyticsReaderRoleId'))]",
-              "scope": "[variables('sentinelWorkspaceResourceId')]",
-              "properties": {
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', parameters('LogAnalyticsReaderRoleId'))]",
-                "principalId": "[parameters('QueuePrincipalId')]",
                 "principalType": "ServicePrincipal"
               }
             },
