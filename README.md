@@ -314,8 +314,9 @@ If you set a notification email:
 2. Under Development Tools, select API connections.
 3. Open the connection whose name starts with: office365-
 4. Select This connection is not authenticated -> Authorize.
-5. Sign in with a mailbox that can send mail.
-6. Select Save.
+5. In GCC High, the authentication type should be `Office 365 Credentials (Office GCC High)`.
+6. Sign in with a mailbox that can send mail.
+7. Select Save.
 ```
 
 If you left the email blank, skip this step.

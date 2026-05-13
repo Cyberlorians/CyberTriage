@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-  "contentVersion": "1.1.0.0",
+  "contentVersion": "1.2.0.0",
   "metadata": {
     "title": "CyberTriage Full GCCH Deployment",
     "description": "Azure Government wrapper for the full CyberTriage deployment. It supplies GCCH endpoint defaults to the shared commercial templates.",
@@ -55,6 +55,13 @@
       "defaultValue": "",
       "metadata": {
         "description": "Optional email address for Office 365 notification. Leave blank if email notification is not needed."
+      }
+    },
+    "Office365ConnectionParameterSet": {
+      "type": "string",
+      "defaultValue": "oauthGccHigh",
+      "metadata": {
+        "description": "Office 365 Outlook connector authentication set for GCC High."
       }
     },
     "SentinelWorkspaceResourceGroup": {
@@ -161,7 +168,7 @@
         "mode": "Incremental",
         "templateLink": {
           "uri": "[concat(parameters('TemplateBaseUri'), 'cybertriage-full-deployment.json')]",
-          "contentVersion": "1.1.0.0"
+          "contentVersion": "1.2.0.0"
         },
         "parameters": {
           "location": { "value": "[parameters('location')]" },
@@ -172,6 +179,7 @@
           "DestinationStorageAccountName": { "value": "[parameters('DestinationStorageAccountName')]" },
           "TargetDeviceTag": { "value": "[parameters('TargetDeviceTag')]" },
           "NotificationEmail": { "value": "[parameters('NotificationEmail')]" },
+          "Office365ConnectionParameterSet": { "value": "[parameters('Office365ConnectionParameterSet')]" },
           "SentinelWorkspaceResourceGroup": { "value": "[parameters('SentinelWorkspaceResourceGroup')]" },
           "SentinelWorkspaceName": { "value": "[parameters('SentinelWorkspaceName')]" },
           "SentinelWorkspaceCustomerId": { "value": "[parameters('SentinelWorkspaceCustomerId')]" },

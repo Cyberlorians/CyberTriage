@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-  "contentVersion": "3.1.0.0",
+  "contentVersion": "3.2.0.0",
   "metadata": {
     "title": "CyberTriage - Forensic Collection (Tag-Driven)",
     "description": "Tag-driven forensic collection. Analyst tags devices in MDE with TargetDeviceTag (default 'ForensicCollect'). XDR automation triggers this Logic App; it finds tagged devices that are online and runs CyberTriage on each via Live Response. Offline tagged devices are skipped this run; the tag persists so they're picked up next run.",
@@ -38,6 +38,15 @@
       "type": "string",
       "defaultValue": "",
       "metadata": { "description": "Optional email address for completion notifications. Leave blank if email notification is not needed." }
+    },
+    "Office365ConnectionParameterSet": {
+      "type": "string",
+      "defaultValue": "oauthPublic",
+      "allowedValues": [
+        "oauthPublic",
+        "oauthGccHigh"
+      ],
+      "metadata": { "description": "Office 365 Outlook connector authentication set. Commercial and GCC use oauthPublic. GCC High uses oauthGccHigh." }
     },
     "SentinelWorkspaceResourceGroup": {
       "type": "string"
@@ -115,7 +124,11 @@
       "kind": "V1",
       "properties": {
         "displayName": "[variables('office365ConnectionName')]",
-        "api": { "id": "[variables('office365ConnectionId')]" }
+        "api": { "id": "[variables('office365ConnectionId')]" },
+        "parameterValueSet": {
+          "name": "[parameters('Office365ConnectionParameterSet')]",
+          "values": {}
+        }
       }
     },
     {

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-  "contentVersion": "1.1.0.0",
+  "contentVersion": "1.2.0.0",
   "metadata": {
     "title": "CyberTriage Full Commercial Deployment",
     "description": "Deploys the evidence storage account, SAS broker Function App, all three CyberTriage Logic Apps, and Azure RBAC role assignments into one resource group. Connector authorization is still completed after deployment.",
@@ -55,6 +55,17 @@
       "defaultValue": "",
       "metadata": {
         "description": "Optional email address for Office 365 notification. Leave blank if email notification is not needed."
+      }
+    },
+    "Office365ConnectionParameterSet": {
+      "type": "string",
+      "defaultValue": "oauthPublic",
+      "allowedValues": [
+        "oauthPublic",
+        "oauthGccHigh"
+      ],
+      "metadata": {
+        "description": "Office 365 Outlook connector authentication set. Commercial and GCC use oauthPublic. GCC High uses oauthGccHigh."
       }
     },
     "SentinelWorkspaceResourceGroup": {
@@ -243,7 +254,7 @@
         "mode": "Incremental",
         "templateLink": {
           "uri": "[concat(parameters('TemplateBaseUri'), 'cybertriage-live-response-collection.json')]",
-          "contentVersion": "3.1.0.0"
+          "contentVersion": "3.2.0.0"
         },
         "parameters": {
           "location": {
@@ -266,6 +277,9 @@
           },
           "NotificationEmail": {
             "value": "[parameters('NotificationEmail')]"
+          },
+          "Office365ConnectionParameterSet": {
+            "value": "[parameters('Office365ConnectionParameterSet')]"
           },
           "SentinelWorkspaceResourceGroup": {
             "value": "[parameters('SentinelWorkspaceResourceGroup')]"

@@ -43,6 +43,7 @@ Runtime MDE collection still requires an onboarded active device.
 | MDE token audience used by GCCH wrappers | `https://api-gov.securitycenter.microsoft.us` |
 | WindowsDefenderATP app ID | `fc780465-2017-40d4-a0c5-307022471b92` |
 | Logic App managed API connectors in `usgovvirginia` | `azuresentinel`, `office365`, `wdatp` present; queue polling uses ARM HTTP/MSI instead of `azuremonitorlogs` |
+| Office 365 Outlook auth type for GCC High | `Office 365 Credentials (Office GCC High)` / template parameter set `oauthGccHigh` |
 
 For regular GCC, Microsoft documents the Defender for Endpoint API endpoint as
 `https://api-gcc.securitycenter.microsoft.us`. GCC High uses
