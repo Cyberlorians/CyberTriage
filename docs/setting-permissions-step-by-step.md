@@ -291,8 +291,14 @@ grant_mde_role() {
   workflow_name="$1"
   role_value="$2"
 
-  mi_id="$(az logic workflow show --resource-group "$PLAYBOOK_RESOURCE_GROUP" --name "$workflow_name" --query identity.principalId -o tsv)"
+  mi_id="$(az resource show --resource-group "$PLAYBOOK_RESOURCE_GROUP" --resource-type Microsoft.Logic/workflows --name "$workflow_name" --query identity.principalId -o tsv)"
   role_id="$(az ad sp show --id "$DEFENDER_APP_ID" --query "appRoles[?value=='$role_value' && contains(allowedMemberTypes, 'Application') && isEnabled].id | [0]" -o tsv)"
+
+  if [ -z "$mi_id" ] || [ -z "$role_id" ]; then
+    echo "[fail] Could not resolve workflow identity or Defender role: $workflow_name / $role_value" >&2
+    return 1
+  fi
+
   existing="$(az rest --method get --url "$GRAPH/v1.0/servicePrincipals/$mi_id/appRoleAssignments" --query "value[?resourceId=='$DEFENDER_SP_ID' && appRoleId=='$role_id'].id | [0]" -o tsv)"
 
   if [ -n "$existing" ]; then
@@ -300,11 +306,15 @@ grant_mde_role() {
     return 0
   fi
 
-  az rest \
+  if ! az rest \
     --method post \
     --url "$GRAPH/v1.0/servicePrincipals/$mi_id/appRoleAssignments" \
     --headers "Content-Type=application/json" \
-    --body "{\"principalId\":\"$mi_id\",\"resourceId\":\"$DEFENDER_SP_ID\",\"appRoleId\":\"$role_id\"}"
+    --body "{\"principalId\":\"$mi_id\",\"resourceId\":\"$DEFENDER_SP_ID\",\"appRoleId\":\"$role_id\"}" \
+    --output none; then
+    echo "[fail] $workflow_name could not be granted $role_value" >&2
+    return 1
+  fi
 
   echo "[ok] $workflow_name granted $role_value"
 }
