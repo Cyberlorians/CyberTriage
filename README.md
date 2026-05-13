@@ -92,6 +92,17 @@ A test device that is onboarded to MDE and recently active
 One guide for both clouds. Any field that differs between Commercial Azure and
 Azure Government / GCC High is shown side by side. Click any step to expand.
 
+## Repository Layout
+
+| Path | Purpose |
+|---|---|
+| [deploy/commercial](deploy/commercial) | Commercial Azure ARM templates. |
+| [deploy/gcch](deploy/gcch) | Azure Government / GCC High ARM wrapper templates. |
+| [assets/watchlists](assets/watchlists) | Sentinel watchlist CSV assets, including `ForensicCollectQueue.csv`. |
+| [scripts](scripts) | Permission helper scripts. |
+| [src](src) | Live Response wrapper and SAS broker source. |
+| [packages](packages) | Deployable broker package artifacts. |
+
 <details>
 <summary><b>Step 1. Click Deploy</b></summary>
 
@@ -152,6 +163,16 @@ notification when a collection is dispatched.
 
 If used, the Office 365 connection still needs manual user authorization after
 deployment (covered in Step 3).
+
+Office 365 connector auth is cloud-specific and is set by ARM:
+
+| Cloud | Template Parameter Set | Portal Authentication Type |
+|---|---|---|
+| Commercial Azure / GCC | `oauthPublic` | `Office 365 Credentials (Office Public/Office GCC)` |
+| GCC High | `oauthGccHigh` | `Office 365 Credentials (Office GCC High)` |
+
+The commercial template defaults to `oauthPublic`. The GCCH templates pass
+`oauthGccHigh` automatically.
 
 **Sentinel Workspace Values**
 
@@ -309,6 +330,10 @@ authorization. The Office 365 connection is the only one that
 requires a user to sign in, and only if `NotificationEmail` was filled in at
 deploy time.
 
+The Office 365 connector auth type is already selected by the ARM template:
+Commercial Azure / GCC uses `oauthPublic`, and GCC High uses `oauthGccHigh`.
+The remaining manual step is signing in with the mailbox that sends mail.
+
 If you set a notification email:
 
 ```text
@@ -316,7 +341,7 @@ If you set a notification email:
 2. Under Development Tools, select API connections.
 3. Open the connection whose name starts with: office365-
 4. Select This connection is not authenticated -> Authorize.
-5. In GCC High, the authentication type should be `Office 365 Credentials (Office GCC High)`.
+5. Confirm the authentication type matches the cloud: `Office 365 Credentials (Office Public/Office GCC)` for Commercial/GCC, or `Office 365 Credentials (Office GCC High)` for GCC High.
 6. Sign in with a mailbox that can send mail.
 7. Select Save.
 ```
