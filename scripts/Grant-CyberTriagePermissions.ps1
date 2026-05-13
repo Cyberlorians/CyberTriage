@@ -266,10 +266,9 @@ if ($IncludeHostStorageOwnerRoles) {
     Grant-AzureRoleIfMissing -PrincipalId $brokerPrincipalId -RoleName 'Storage Account Contributor' -Scope $hostStorageScope -Reason 'Lab-proven broader host storage role; use only if minimum host roles fail.'
 }
 
-Write-Section 'Grant Sentinel and Log Analytics roles'
+Write-Section 'Grant Sentinel workspace roles'
 Grant-AzureRoleIfMissing -PrincipalId $setPrincipalId -RoleName 'Microsoft Sentinel Contributor' -Scope $workspaceScope -Reason 'Set-CyberTriage writes watchlist queue rows and reads incident entity context.'
-Grant-AzureRoleIfMissing -PrincipalId $queuePrincipalId -RoleName 'Log Analytics Reader' -Scope $workspaceScope -Reason 'Queue checker queries Watchlist and DeviceInfo telemetry.'
-Grant-AzureRoleIfMissing -PrincipalId $queuePrincipalId -RoleName 'Microsoft Sentinel Contributor' -Scope $workspaceScope -Reason 'Queue checker deletes duplicate watchlist items and dispatches current queue rows.'
+Grant-AzureRoleIfMissing -PrincipalId $queuePrincipalId -RoleName 'Microsoft Sentinel Contributor' -Scope $workspaceScope -Reason 'Queue checker reads watchlist queue rows through ARM Watchlist REST and dispatches current queue rows.'
 Grant-AzureRoleIfMissing -PrincipalId $collectionPrincipalId -RoleName 'Microsoft Sentinel Contributor' -Scope $workspaceScope -Reason 'Collection playbook updates blocked queue rows and deletes queue rows after LR handoff.'
 
 if ($SkipDefenderAppRoles) {
