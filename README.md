@@ -136,6 +136,20 @@ Azure RBAC assignments that ARM is allowed to create
 | Region | Region for the CyberTriage resources. Pick a region your subscription has Functions Consumption quota in. |
 | Location | Generated value matching the region. |
 
+> **If validation fails with `InternalSubscriptionIsOverQuotaForSku` / `Dynamic VMs`:**
+> the selected region does not have enough Azure Functions/App Service dynamic
+> worker quota for the SAS broker Function App. This is a subscription quota
+> issue, not a template problem. Fix it one of two ways:
+>
+> 1. Select a different region that already has `Dynamic VMs` quota.
+> 2. Request a quota increase for `Dynamic VMs` in the target region. A fresh
+>    deployment needs at least `1`; request more if the subscription will host
+>    additional Function Apps.
+>
+> In the Azure portal, open **Subscriptions** > your subscription > **Usage +
+> quotas**, search for `Dynamic VMs`, select the deployment region, and request
+> an increase. After quota is approved, rerun **Review + create**.
+
 **Broker Shared Secret**
 
 Leave blank. The template auto-generates the secret with `newGuid()` and wires
