@@ -393,11 +393,23 @@ exactly.
 Upload both in the Microsoft Defender portal under **Settings → Endpoints →
 Live response → Library**.
 
+For an existing deployment, overwrite `Run-CyberTriage.ps1` with the copy from
+this repository. The Logic App passes only the runtime SAS URL; the script owns
+the collection mode and defaults to a full collection. The wrapper writes the
+encrypted artifact to `C:\CyberTriage\keep`, uploads that same encrypted file
+to blob storage, and leaves the local copy in place.
+
+After upload, verify the local file hash before testing:
+
+```powershell
+Get-FileHash -Algorithm SHA256 .\src\LiveResponse\Run-CyberTriage.ps1
+```
+
 > **GCCH portal upload fallback:** the GCCH Defender portal sometimes
-> rejects the `.exe` upload with the generic error `Failed to upload file —
-> A problem occurred while running the command.` The PS1 typically uploads
-> fine; only the EXE fails. The MDE API accepts the same file without
-> issue. If you hit this, use the API path below.
+> rejects Library uploads with the generic error `Failed to upload file —
+> A problem occurred while running the command.` The MDE API accepts the same
+> files when called with an app that has the required Defender roles. If you
+> hit this, use the API path below.
 
 <details>
 <summary><b>API upload fallback (only if the portal fails)</b></summary>
@@ -451,8 +463,9 @@ $tokenResp = Invoke-RestMethod -Method POST `
              scope="$resource/.default"; grant_type='client_credentials' }
 $token = $tokenResp.access_token
 
-# 6. Upload the EXE via multipart POST
-$filePath = 'C:\path\to\CyberTriageCollector.exe'
+# 6. Upload a Library file via multipart POST. Run once per file if needed.
+$filePath = 'C:\tools\CyberTriage\src\LiveResponse\Run-CyberTriage.ps1'
+# $filePath = 'C:\path\to\CyberTriageCollector.exe'
 $boundary = [Guid]::NewGuid().ToString()
 $LF       = "`r`n"
 $ms       = New-Object System.IO.MemoryStream
@@ -464,7 +477,7 @@ function Add-Field([string]$n,[string]$v){
 }
 Add-Field 'HasParameters' 'false'
 Add-Field 'OverrideIfExists' 'true'
-Add-Field 'Description' 'CyberTriage collector binary'
+Add-Field 'Description' 'CyberTriage Live Response file'
 $bw.Write([Text.Encoding]::UTF8.GetBytes(
     "--$boundary$LF" +
     "Content-Disposition: form-data; name=`"file`"; " +
@@ -599,11 +612,14 @@ Use this when there is no incident, just a known-bad device.
    `cybertriage-results` with this name pattern:
 
    ```text
+   cttout_<device>_<timestamp>.json.gz.enc
    cttout_<device>_<timestamp>.json.gz.enc.01
    ```
 
-9. Confirm the `ForensicCollect` tag is removed from the device in MDE.
-10. Confirm the watchlist row is deleted (or marked `Dispatched`).
+9. Confirm the endpoint keeps the encrypted local copy under
+   `C:\CyberTriage\keep`.
+10. Confirm the `ForensicCollect` tag is removed from the device in MDE.
+11. Confirm the watchlist row is deleted (or marked `Dispatched`).
 
 If any step fails, see Troubleshooting below.
 

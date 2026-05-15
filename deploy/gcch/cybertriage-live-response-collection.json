@@ -50,7 +50,7 @@
         "mode": "Incremental",
         "templateLink": {
           "uri": "[concat(parameters('TemplateBaseUri'), 'cybertriage-live-response-collection.json')]",
-          "contentVersion": "3.2.0.0"
+          "contentVersion": "3.3.0.0"
         },
         "parameters": {
           "location": { "value": "[parameters('location')]" },

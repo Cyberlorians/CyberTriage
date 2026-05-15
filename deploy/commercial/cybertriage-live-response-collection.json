@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-  "contentVersion": "3.2.0.0",
+  "contentVersion": "3.3.0.0",
   "metadata": {
     "title": "CyberTriage - Forensic Collection (Tag-Driven)",
     "description": "Tag-driven forensic collection. Analyst tags devices in MDE with TargetDeviceTag (default 'ForensicCollect'). XDR automation triggers this Logic App; it finds tagged devices that are online and runs CyberTriage on each via Live Response. Offline tagged devices are skipped this run; the tag persists so they're picked up next run.",
@@ -90,8 +90,6 @@
     "PlaybookName": "CyberTriage-LiveResponse-Collection",
     "CyberTriageExeName": "CyberTriageCollector.exe",
     "CollectionScriptName": "Run-CyberTriage.ps1",
-    "CollectionType": "fast",
-    "OutputPath": "C:\\Windows\\Temp\\cttout.json.enc",
     "DestinationContainerName": "cybertriage-results",
     "OnlineThresholdMinutes": 30,
     "office365ConnectionName": "[concat('office365-', variables('PlaybookName'))]",
@@ -157,8 +155,6 @@
             "TargetDeviceTag":            { "type": "String", "defaultValue": "[parameters('TargetDeviceTag')]" },
             "CollectionScriptName":       { "type": "String", "defaultValue": "[variables('CollectionScriptName')]" },
             "CyberTriageExeName":         { "type": "String", "defaultValue": "[variables('CyberTriageExeName')]" },
-            "CollectionType":             { "type": "String", "defaultValue": "[variables('CollectionType')]" },
-            "OutputPath":                 { "type": "String", "defaultValue": "[variables('OutputPath')]" },
             "DestinationContainerName":   { "type": "String", "defaultValue": "[variables('DestinationContainerName')]" },
             "DestinationStorageAccountName": { "type": "String",       "defaultValue": "[parameters('DestinationStorageAccountName')]" },
             "SasBrokerUrl":               { "type": "SecureString", "defaultValue": "[parameters('SasBrokerUrl')]" },
@@ -202,14 +198,9 @@
               "runAfter": {},
               "inputs": { "variables": [{ "name": "TagName", "type": "string", "value": "@{coalesce(triggerBody()?['TagName'], parameters('TargetDeviceTag'))}" }] }
             },
-            "Init_CollectionType": {
-              "type": "InitializeVariable",
-              "runAfter": { "Init_TagName": ["Succeeded"] },
-              "inputs": { "variables": [{ "name": "CollectionTypeRun", "type": "string", "value": "@parameters('CollectionType')" }] }
-            },
             "Init_IncidentId": {
               "type": "InitializeVariable",
-              "runAfter": { "Init_CollectionType": ["Succeeded"] },
+              "runAfter": { "Init_TagName": ["Succeeded"] },
               "inputs": { "variables": [{ "name": "IncidentId", "type": "string", "value": "@{coalesce(triggerBody()?['IncidentId'], '')}" }] }
             },
             "Init_DeviceId": {
@@ -395,11 +386,11 @@
                                   { "type": "PutFile",   "params": [{ "key": "FileName",   "value": "@{parameters('CyberTriageExeName')}" }] },
                                   { "type": "RunScript", "params": [
                                       { "key": "ScriptName", "value": "@{parameters('CollectionScriptName')}" },
-                                      { "key": "Args", "value": "@{concat('-AzureSasUrl ''', body('Generate_CyberTriage_Sas')?['sasUrl'], ''' -Profile ', variables('CollectionTypeRun'))}" }
+                                      { "key": "Args", "value": "@{concat('-AzureSasUrl ''', body('Generate_CyberTriage_Sas')?['sasUrl'], '''')}" }
                                     ]
                                   }
                                 ],
-                                "Comment": "CyberTriage @{variables('CollectionTypeRun')} (tag: @{variables('TagName')}). Collector uploads directly to blob via short-lived SAS URL. Incident: @{coalesce(variables('IncidentId'), 'N/A')}"
+                                "Comment": "CyberTriage collection (tag: @{variables('TagName')}). Wrapper uploads encrypted output to blob via short-lived SAS URL and keeps a local encrypted copy. Incident: @{coalesce(variables('IncidentId'), 'N/A')}"
                               }
                             },
                             "runtimeConfiguration": {
@@ -449,7 +440,7 @@
                                   "body": {
                                     "To": "@{parameters('NotificationEmail')}",
                                     "Subject": "CyberTriage Collection Started - @{items('For_Each_Tagged_Device')?['computerDnsName']}",
-                                    "Body": "<h3>Forensic Collection Launched</h3><p>The Cyber Triage collector has been handed off to Defender Live Response. It runs in the background and uploads the encrypted artifact directly to blob storage with a short-lived SAS URL (typically 5&ndash;30 minutes for a workstation, longer for servers). The verification playbook will confirm successful upload separately.</p><table border='1' cellpadding='5'><tr><td><b>Device</b></td><td>@{items('For_Each_Tagged_Device')?['computerDnsName']}</td></tr><tr><td><b>Device ID</b></td><td>@{items('For_Each_Tagged_Device')?['id']}</td></tr><tr><td><b>OS</b></td><td>@{items('For_Each_Tagged_Device')?['osPlatform']}</td></tr><tr><td><b>Machine Action ID</b></td><td>@{body('Run_LR_Collection')?['id']}</td></tr><tr><td><b>Tag</b></td><td>@{variables('TagName')}</td></tr><tr><td><b>Collection Profile</b></td><td>@{variables('CollectionTypeRun')}</td></tr><tr><td><b>Incident</b></td><td>@{coalesce(variables('IncidentId'), 'N/A')}</td></tr><tr><td><b>Storage Account</b></td><td>@{parameters('DestinationStorageAccountName')}</td></tr><tr><td><b>Container</b></td><td>@{parameters('DestinationContainerName')}</td></tr><tr><td><b>SAS Expires</b></td><td>@{coalesce(body('Generate_CyberTriage_Sas')?['expiresOnUtc'], 'Runtime-generated')}</td></tr><tr><td><b>Expected Blob</b></td><td>cttout_@{items('For_Each_Tagged_Device')?['computerDnsName']}_&lt;timestamp&gt;.json.gz.enc.01</td></tr><tr><td><b>Decryption Password</b></td><td><code>infected</code> &mdash; open in Cyber Triage product</td></tr></table>",
+                                    "Body": "<h3>Forensic Collection Launched</h3><p>The Cyber Triage wrapper has been handed off to Defender Live Response. It runs in the background, keeps the encrypted artifact on the endpoint, and uploads the same encrypted artifact to blob storage with a short-lived SAS URL (typically 30+ minutes, longer for servers). The verification playbook will confirm successful upload separately.</p><table border='1' cellpadding='5'><tr><td><b>Device</b></td><td>@{items('For_Each_Tagged_Device')?['computerDnsName']}</td></tr><tr><td><b>Device ID</b></td><td>@{items('For_Each_Tagged_Device')?['id']}</td></tr><tr><td><b>OS</b></td><td>@{items('For_Each_Tagged_Device')?['osPlatform']}</td></tr><tr><td><b>Machine Action ID</b></td><td>@{body('Run_LR_Collection')?['id']}</td></tr><tr><td><b>Tag</b></td><td>@{variables('TagName')}</td></tr><tr><td><b>Incident</b></td><td>@{coalesce(variables('IncidentId'), 'N/A')}</td></tr><tr><td><b>Storage Account</b></td><td>@{parameters('DestinationStorageAccountName')}</td></tr><tr><td><b>Container</b></td><td>@{parameters('DestinationContainerName')}</td></tr><tr><td><b>SAS Expires</b></td><td>@{coalesce(body('Generate_CyberTriage_Sas')?['expiresOnUtc'], 'Runtime-generated')}</td></tr><tr><td><b>Expected Blob</b></td><td>cttout_@{items('For_Each_Tagged_Device')?['computerDnsName']}_&lt;timestamp&gt;.json.gz.enc or .json.gz.enc.*</td></tr><tr><td><b>Local Copy</b></td><td>C:\\CyberTriage\\keep</td></tr><tr><td><b>Decryption Password</b></td><td><code>infected</code> &mdash; open in Cyber Triage product</td></tr></table>",
                                     "Importance": "Normal",
                                     "IsHtml": true
                                   }
