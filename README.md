@@ -1,9 +1,9 @@
 # CyberTriage Live Response
 
 A Microsoft Sentinel + Microsoft Defender for Endpoint workflow that launches
-Cyber Triage forensic collection through MDE Live Response and uploads the
-encrypted artifact directly to Azure Blob Storage with a short-lived
-user-delegation SAS URL.
+Cyber Triage forensic collection through MDE Live Response, keeps the encrypted
+artifact on the endpoint, and uploads that same encrypted artifact to Azure
+Blob Storage with a short-lived user-delegation SAS URL.
 
 No storage account key is sent to the endpoint. Shared key access stays
 disabled.
@@ -26,8 +26,9 @@ flowchart TD
     Broker --> Sas[Short-lived user-delegation SAS]
     Collection --> LR[MDE Live Response]
     LR --> Endpoint[Endpoint runs Run-CyberTriage.ps1]
-    Endpoint --> Collector[CyberTriageCollector.exe]
-    Collector --> EvidenceStorage
+   Endpoint --> Collector[CyberTriageCollector.exe]
+   Collector --> LocalKeep[Endpoint local copy: C:\CyberTriage\keep]
+   LocalKeep --> EvidenceStorage
     Collection --> Cleanup[Remove tag and delete watchlist item]
 ```
 
@@ -50,9 +51,10 @@ Step by step:
 5. **Run on the endpoint.** The collection workflow starts an MDE Live
    Response session that uploads `Run-CyberTriage.ps1` and
    `CyberTriageCollector.exe` from the MDE Library, then runs the wrapper.
-6. **Upload directly to Blob.** The collector encrypts the artifact and
-   streams it to the evidence storage account using the SAS URL. Nothing is
-   staged on disk longer than needed.
+6. **Keep locally and upload to Blob.** The wrapper runs the collector without
+   native cloud upload, writes the encrypted artifact under
+   `C:\CyberTriage\keep`, uploads that same encrypted file to the evidence
+   storage account using the SAS URL, and leaves the endpoint copy in place.
 7. **Clean up.** The workflow removes the MDE tag and deletes (or updates) the
    watchlist row so the same device is not collected twice.
 
