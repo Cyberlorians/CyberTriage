@@ -414,12 +414,12 @@
                             "expression": { "and": [{ "not": { "equals": ["@empty(triggerBody()?['WatchlistItemId'])", true] } }] },
                             "actions": {
                               "Delete_Watchlist_Item": {
-                                "type": "ApiConnection",
+                                "type": "Http",
                                 "runAfter": {},
                                 "inputs": {
-                                  "host": { "connection": { "name": "@parameters('$connections')['azuresentinel']['connectionId']" } },
                                   "method": "delete",
-                                  "path": "/Watchlists/subscriptions/@{encodeURIComponent(parameters('WorkspaceSubscriptionId'))}/resourceGroups/@{encodeURIComponent(parameters('WorkspaceResourceGroup'))}/workspaces/@{encodeURIComponent(parameters('WorkspaceCustomerId'))}/watchlists/@{encodeURIComponent(parameters('WatchlistAlias'))}/watchlistItem/@{encodeURIComponent(triggerBody()?['WatchlistItemId'])}"
+                                  "uri": "@{concat(parameters('ArmBaseUri'), '/subscriptions/', encodeURIComponent(parameters('WorkspaceSubscriptionId')), '/resourceGroups/', encodeURIComponent(parameters('WorkspaceResourceGroup')), '/providers/Microsoft.OperationalInsights/workspaces/', encodeURIComponent(parameters('WorkspaceName')), '/providers/Microsoft.SecurityInsights/watchlists/', encodeURIComponent(parameters('WatchlistAlias')), '/watchlistItems/', encodeURIComponent(triggerBody()?['WatchlistItemId']), '?api-version=2023-09-01-preview')}",
+                                  "authentication": { "type": "ManagedServiceIdentity", "audience": "@parameters('ArmAudience')" }
                                 }
                               }
                             },
